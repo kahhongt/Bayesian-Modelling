@@ -174,7 +174,7 @@ y_transform = np.ravel(df_transform[1])
 
 
 """Bin point process data"""
-histo, x_edges, y_edges = np.histogram2d(x_transform, y_transform, bins=20)
+histo, x_edges, y_edges = np.histogram2d(x_transform, y_transform, bins=10)
 xv_transform, yv_transform = np.meshgrid(x_edges, y_edges)
 xv_transform = xv_transform[:-1, :-1]  # Removing the last bin edge and zero points to make dimensions consistent
 yv_transform = yv_transform[:-1, :-1]  # Contains a square matrix
