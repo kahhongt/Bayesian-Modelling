@@ -192,7 +192,7 @@ xy_data_coord = np.vstack((xv_transform_row, yv_transform_row))
 
 """Calculate optimal hyper-parameters using Nelder-Mead with Initial Parameters"""
 # Select Optimization method for hyper-parameters
-opt_method = 'nelder-mead'
+opt_method = 'latin-hypercube-de'
 matern_v = 3/2  # Define matern_v
 xyz_data = (xy_data_coord, histo, matern_v)
 
@@ -202,7 +202,7 @@ if opt_method == 'nelder-mead':
     # Have to check that all values are positive
     solution = scopt.minimize(fun=log_model_evidence, args=xyz_data, x0=initial_param, method='Nelder-Mead')
 
-elif opt_method == 'latin-hypercube':
+elif opt_method == 'latin-hypercube-de':
     boundary = [(0, 30), (0, 3), (0, 3), (0, 10)]
     solution = scopt.differential_evolution(func=log_model_evidence, bounds=boundary, args=xyz_data,
                                             init='latinhypercube')

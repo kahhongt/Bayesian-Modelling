@@ -144,21 +144,18 @@ def inverse_cholesky(matrix_a):
 
 
 # Generate artificial random stratified sample vectors using the Latin Hypercube
-def initial_param(bounds, guesses):  # guesses is an arbitrary input value
+def initial_param_latin(bounds, guesses):  # guesses is an arbitrary input value
     final_vectors = np.zeros((len(bounds), guesses))
     while np.unique(final_vectors).size != final_vectors.size:  # While the all the elements are not unique, do the loop
         for i in range(final_vectors.shape[0]):
             for j in range(final_vectors.shape[1]):
-                final_vectors[i, j] = np.random.uniform(bounds[i][0], bounds[i][1])
+                final_vectors[i, j] = np.random.randint(bounds[i][0] * 10, bounds[i][1] * 10) / 10
+                # Generate random numbers with one decimal place
     return final_vectors
 
 
-boundary = [(0, 30), (0, 3), (0, 3), (0, 10), (0, 100)]
-final = initial_param(boundary, 5)
-print(final)
-b = np.zeros((2, 4))
-print(b)
-print(np.unique(b))
+# Global Optimisation of Parameters attempt
+# def optimise_param(function, argument)
 
 
 
