@@ -2,6 +2,7 @@ import matplotlib
 import numpy as np
 import pandas as pd
 import math
+import time
 import functions as fn
 import matplotlib.pyplot as plt
 import scipy.optimize as scopt
@@ -88,6 +89,8 @@ def log_model_evidence(param, *args):  # Param includes both sigma and l, arg is
     log_model_evid = model_fit + model_complexity + model_constant
     return -log_model_evid  # We want to maximize the log-likelihood, meaning the min of negative log-likelihood
 
+
+start_time = time.clock()
 
 """Importing Point Process Data Set"""
 A = np.genfromtxt('Coal_Data_Bayesian.csv', delimiter=',')  # Extract from csv using numpy
@@ -184,12 +187,10 @@ Coal_data.set_xlim(np.min(sampling_points), np.max(sampling_points))
 Coal_data.set_ylim(np.min(lower_bound), np.max(upper_bound))
 Coal_data.grid(True)
 
+elapsed_time = time.clock() - start_time
+print(elapsed_time)
+
 plt.show()
-
-
-
-
-
 
 
 """

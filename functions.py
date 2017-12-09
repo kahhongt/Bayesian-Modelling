@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from numpy.lib import scimath
 import matplotlib
 matplotlib.use('TkAgg')
@@ -134,8 +135,30 @@ def dt_integer(dt_array, start, end):
     return dt_int
 
 
+# Generate inverse of matrix using cholesky decomposition - compare time taken with linagl.inv
+def inverse_cholesky(matrix_a):
+    l = np.linalg.cholesky(matrix_a)
+    u = np.linalg.inv(l)
+    inverse = np.matmul(u.transpose(), u)
+    return inverse
 
 
+# Generate artificial random stratified sample vectors using the Latin Hypercube
+def initial_param(bounds, guesses):  # guesses is an arbitrary input value
+    final_vectors = np.zeros((len(bounds), guesses))
+    while np.unique(final_vectors).size != final_vectors.size:  # While the all the elements are not unique, do the loop
+        for i in range(final_vectors.shape[0]):
+            for j in range(final_vectors.shape[1]):
+                final_vectors[i, j] = np.random.uniform(bounds[i][0], bounds[i][1])
+    return final_vectors
+
+
+boundary = [(0, 30), (0, 3), (0, 3), (0, 10), (0, 100)]
+final = initial_param(boundary, 5)
+print(final)
+b = np.zeros((2, 4))
+print(b)
+print(np.unique(b))
 
 
 

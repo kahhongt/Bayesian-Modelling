@@ -128,12 +128,12 @@ def mu_post(p_mean, xy_next, c_auto, c_cross, mismatch):  # Posterior mean
     if c_auto.shape[0] != (np.transpose(mismatch)).shape[0]:
         print('Second Dimension Mismatch!')
     else:
-        mean_post = mean_func_scalar(p_mean, xy_next) + fn.matmulmul(c_cross, np.linalg.inv(c_auto), np.transpose(mismatch))
+        mean_post = mean_func_scalar(p_mean, xy_next) + fn.matmulmul(c_cross, fn.inverse_cholesky(c_auto), np.transpose(mismatch))
         return mean_post
 
 
 def cov_post(c_next_auto, c_cross, c_auto):  # Posterior Covariance
-    c_post = c_next_auto - fn.matmulmul(c_cross, np.linalg.inv(c_auto), np.transpose(c_cross))
+    c_post = c_next_auto - fn.matmulmul(c_cross, fn.inverse_cholesky(c_auto), np.transpose(c_cross))
     return c_post
 
 
@@ -150,7 +150,7 @@ def log_model_evidence(param, *args):  # Param includes both sigma and l, arg is
     # c_auto = squared_exp_2d(sigma, length, xy_coordinates, xy_coordinates)
     c_noise = np.eye(c_auto.shape[0]) * (noise ** 2)  # Fro-necker delta function
     c_auto_noise = c_auto + c_noise  # Overall including noise, plus include any other combination
-    model_fit = - 0.5 * fn.matmulmul(histogram_data - prior_mu, np.linalg.inv(c_auto_noise),
+    model_fit = - 0.5 * fn.matmulmul(histogram_data - prior_mu, fn.inverse_cholesky(c_auto_noise),
                                      np.transpose(histogram_data - prior_mu))
     model_complexity = - 0.5 * math.log(np.linalg.det(c_auto_noise))
     model_constant = - 0.5 * len(histogram_data) * math.log(2*np.pi)
