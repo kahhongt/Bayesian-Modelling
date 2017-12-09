@@ -190,12 +190,21 @@ histo = fn.row_create(histo)
 xy_data_coord = np.vstack((xv_transform_row, yv_transform_row))
 
 
-"""Calculate optimal hyper-parameters using Nelder-Mead with Initial Parameters"""
 # Select Optimization method for hyper-parameters
 opt_method = 'latin-hypercube-de'
 matern_v = 3/2  # Define matern_v
 xyz_data = (xy_data_coord, histo, matern_v)
+boundary_self = [(0, 30), (0, 3), (0, 3), (0, 10)]  # Can even use this into Nelder-Mead
 
+"""Optimization using self-made function"""
+param_optimal = fn.optimise_param(opt_func=log_model_evidence, opt_arg=xyz_data, opt_method='latin-hypercube-manual',
+                                  boundary=boundary_self)
+
+print(param_optimal)
+
+
+"""
+# Calculate optimal hyper-parameters using Nelder-Mead with Initial Parameters
 if opt_method == 'nelder-mead':
     initial_param = np.array([10, 3, 3, 10])  # sigma, length, noise and prior mean starting point of iteration
     # No bounds needed for Nelder-Mead
@@ -206,13 +215,12 @@ elif opt_method == 'latin-hypercube-de':
     boundary = [(0, 30), (0, 3), (0, 3), (0, 10)]
     solution = scopt.differential_evolution(func=log_model_evidence, bounds=boundary, args=xyz_data,
                                             init='latinhypercube')
+"""
 
-
-sigma_optimal = solution.x[0]
-length_optimal = solution.x[1]
-noise_optimal = solution.x[2]
-mean_optimal = solution.x[3]
-print(solution)
+sigma_optimal = param_optimal[0]
+length_optimal = param_optimal[1]
+noise_optimal = param_optimal[2]
+mean_optimal = param_optimal[3]
 print(mean_optimal)
 print('mean of data set = %s' % np.average(histo))
 print(histo.shape)

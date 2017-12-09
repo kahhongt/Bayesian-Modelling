@@ -1,6 +1,7 @@
 import numpy as np
 import time
 from numpy.lib import scimath
+import scipy.optimize as scopt
 import matplotlib
 matplotlib.use('TkAgg')
 
@@ -154,8 +155,39 @@ def initial_param_latin(bounds, guesses):  # guesses is an arbitrary input value
     return final_vectors
 
 
-# Global Optimisation of Parameters attempt
-# def optimise_param(function, argument)
+# Global Optimisation of Parameters attempt - generates the optimal parameters in the form of an array
+def optimise_param(opt_func, opt_arg, opt_method, boundary):
+
+    # note that opt_arg is a tuple containing xy_data_coord, histo and matern_v
+    if opt_method == 'nelder-mead':  # Uses only an arbitrary starting point
+        initial_param = np.array([10, 3, 3, 10])  # sigma, length, noise and prior mean starting point of iteration
+        # No bounds needed for Nelder-Mead
+        # Have to check that all values are positive
+        solution = scopt.minimize(fun=opt_func, args=opt_arg, x0=initial_param, method='Nelder-Mead')
+        optimal_parameters = solution.x
+
+    elif opt_method == 'latin-hypercube-de':  # everything is already taken as an input
+        solution = scopt.differential_evolution(func=opt_func, bounds=boundary, args=opt_arg,
+                                                init='latinhypercube')
+        optimal_parameters = solution.x
+
+    elif opt_method == 'latin-hypercube-manual':  # manual global optimization
+        guesses = 10
+        ind_parameters = np.zeros((len(boundary), guesses))
+        ind_func = np.zeros(guesses)
+        initial_param_stacked = initial_param_latin(boundary, guesses)  # using self-made function
+        for i in range(len(boundary)):
+            initial_param = initial_param_stacked[:, i]
+            solution = scopt.minimize(fun=opt_func, args=opt_arg, x0=initial_param, method='Nelder-Mead')
+            ind_parameters[:, i] = solution.x
+            ind_func[i] = solution.fun
+        opt_index = np.argmin(ind_func)
+        optimal_parameters = ind_parameters[:, opt_index]
+
+    return optimal_parameters
+
+
+
 
 
 
