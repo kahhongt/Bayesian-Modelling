@@ -128,6 +128,14 @@ def matmulmul(a1, b1, c1):
 
 # Calculating matrix inverse using LU Decomposition
 
+# Return integer from datetime - using start and end dates
+def dt_integer(dt_array, start, end):
+    dt_int = dt_array.years + (dt_array.months / 12) + (dt_array.days / 365)
+    return dt_int
+
+
+
+
 
 
 

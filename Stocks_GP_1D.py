@@ -1,8 +1,8 @@
 import matplotlib
 import numpy as np
 import datetime as dt
-import pandas_datareader as pdr
 import pandas as pd
+import pandas_datareader as pdr
 import math
 import functions as fn
 import matplotlib.pyplot as plt
@@ -78,14 +78,15 @@ def log_model_evidence(param, *args):  # Param includes both sigma and l, arg is
 
 
 """Importing Point Process Data Set"""
-start = dt.datetime(2012, 1, 1)
+start = dt.datetime(2016, 6, 1)
 end = dt.datetime(2017, 1, 1)  # Manually set end of range
 present = dt.datetime.now().date()
 
 apple = pdr.DataReader("AAPL", 'yahoo', start, end)  # Take not of the capitalization in DataReader
 # google = pdr.DataReader("GOOGL", 'yahoo', start, end)
-x = apple.index.values  # numpy.ndarray type
-y = apple['Adj Close'].values  # numpy.ndarry type
+dt_x = (apple.index - start).days  # Have to covert to days first
+x = np.array(dt_x)  # This creates an unmasked numpy array
+y = apple['Adj Close'].values  # numpy.ndarray type
 v = 3/2
 
 xyv_data = (x, y, v)
