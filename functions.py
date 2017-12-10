@@ -115,7 +115,7 @@ def columnize(matrix):  # change a matrix into a column
     return column
 
 
-def row_create(matrix):
+def row_create(matrix):  # Generate a row from all the elements of a matrix
     row = np.ravel(np.reshape(matrix, (1, matrix.size)))
     return row
 
@@ -144,7 +144,8 @@ def inverse_cholesky(matrix_a):
     return inverse
 
 
-# Generate artificial random stratified sample vectors using the Latin Hypercube
+# Generate artificial random stratified sample vectors using the Latin Hypercube principle
+# As the number of guesses are arbitrarily chosen, it is less effective than differential evolution, but much faster
 def initial_param_latin(bounds, guesses):  # guesses is an arbitrary input value
     final_vectors = np.zeros((len(bounds), guesses))
     while np.unique(final_vectors).size != final_vectors.size:  # While the all the elements are not unique, do the loop
