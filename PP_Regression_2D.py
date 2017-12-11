@@ -190,20 +190,20 @@ histo = fn.row_create(histo)
 xy_data_coord = np.vstack((xv_transform_row, yv_transform_row))
 
 
-# Select Optimization method for hyper-parameters
-opt_method = 'latin-hypercube-de'
+# Select Optimization method for hyper-parameters and other conditions
+opt_method = 'nelder-mead'
 matern_v = 3/2  # Define matern_v
 xyz_data = (xy_data_coord, histo, matern_v)
 boundary_self = [(0, 30), (0, 3), (0, 3), (0, 10)]  # Can even use this into Nelder-Mead
 
 """Optimization using self-made function"""
-param_optimal = fn.optimise_param(opt_func=log_model_evidence, opt_arg=xyz_data, opt_method='latin-hypercube-manual',
+param_optimal = fn.optimise_param(opt_func=log_model_evidence, opt_arg=xyz_data, opt_method=opt_method,
                                   boundary=boundary_self)
 
 print(param_optimal)
 
 
-"""
+""" this is the coupled block of code before creating my own function param_optimal
 # Calculate optimal hyper-parameters using Nelder-Mead with Initial Parameters
 if opt_method == 'nelder-mead':
     initial_param = np.array([10, 3, 3, 10])  # sigma, length, noise and prior mean starting point of iteration
