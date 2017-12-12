@@ -72,6 +72,16 @@ def mu_post(x_next, c_auto, c_cross, mismatch, p_mean):  # Posterior Mean
         return mean_post
 
 
+def mu_post_linear(x_next, c_auto, c_cross, mismatch, p_grad, p_intercept):  # Posterior Mean
+    if c_cross.shape[1] != c_auto.shape[1]:  # Check that the dimensions are consistent
+        print('First Dimension Mismatch!')
+    if c_auto.shape[0] != (np.transpose(mismatch)).shape[0]:
+        print('Second Dimension Mismatch!')
+    else:
+        mean_post = mean_func_linear(p_grad, p_intercept, x_next) + fn.matmulmul(c_cross, np.linalg.inv(c_auto), np.transpose(mismatch))
+        return mean_post
+
+
 def cov_post(c_next_auto, c_cross, c_auto):  # Posterior Covariance
     c_post = c_next_auto - fn.matmulmul(c_cross, np.linalg.inv(c_auto), np.transpose(c_cross))
     return c_post
@@ -86,6 +96,28 @@ def log_model_evidence(param, *args):  # Param includes both sigma and l, arg is
     y_data = args[1]
     matern_nu = args[2]
     prior_mu = mean_func_scalar(mean, x_data)
+    # Prior mean function only takes in optimal mean and location of data points as inputs
+    c_auto = matern(matern_nu, sigma, length, x_data, x_data)
+    # c_auto = squared_exp(sigma, length, x_data, x_data)
+    c_noise = np.eye(c_auto.shape[0]) * (noise ** 2)  # Fro-necker delta function
+    c_auto_noise = c_auto + c_noise  # Overall including noise, plus include any other combination
+    model_fit = - 0.5 * fn.matmulmul(y_data - prior_mu, np.linalg.inv(c_auto_noise), np.transpose(y_data - prior_mu))
+    model_complexity = - 0.5 * math.log(np.linalg.det(c_auto_noise))
+    model_constant = - 0.5 * len(y_data) * math.log(2*np.pi)
+    log_model_evid = model_fit + model_complexity + model_constant
+    return -log_model_evid  # We want to maximize the log-likelihood, meaning the min of negative log-likelihood
+
+
+def log_model_evidence_linear(param, *args):  # Param includes both sigma and l, arg is passed as a pointer
+    sigma = param[0]  # param is a tuple containing 2 things, which has already been defined in the function def
+    length = param[1]
+    noise = param[2]  # Over here we have defined each parameter in the tuple, include noise
+    grad = param[3]  # The constant prior mean is now a hyper-parameter to be optimised
+    intercept = param[4]
+    x_data = args[0]  # This argument is a constant passed into the function
+    y_data = args[1]
+    matern_nu = args[2]
+    prior_mu = mean_func_linear(grad, intercept, x_data)
     # Prior mean function only takes in optimal mean and location of data points as inputs
     c_auto = matern(matern_nu, sigma, length, x_data, x_data)
     # c_auto = squared_exp(sigma, length, x_data, x_data)
@@ -116,9 +148,9 @@ for i in range(y_length_interval):
 v = 3/2
 
 xyv_data = (x, y, v)  # Matern function has been entered into the minimise function
-initial_param = np.array([10, 10, 10, 5])  # sigma, length scale, noise
+initial_param = np.array([10, 10, 10, 5, 20])  # sigma, length scale, noise
 # bounds = ((0, 10), (0, 10), (0, 10))  # Hyper-parameters should be positive, Nelder-Mead does not use bounds
-solution = scopt.minimize(fun=log_model_evidence, args=xyv_data, x0=initial_param, method='Nelder-Mead')
+solution = scopt.minimize(fun=log_model_evidence_linear, args=xyv_data, x0=initial_param, method='Nelder-Mead')
 # Currently using kernel matern v = 3/2
 # Nelder-mead cannot handle constraints or bounds - no bounds needed then
 
@@ -126,7 +158,8 @@ solution = scopt.minimize(fun=log_model_evidence, args=xyv_data, x0=initial_para
 sigma_optimal = solution.x[0]
 length_optimal = solution.x[1]
 noise_optimal = solution.x[2]
-mean_optimal = solution.x[3]
+grad_optimal = solution.x[3]
+intercept_optimal = solution.x[4]
 # Here the optimal hyper-parameters are now obtained
 print(solution.x)
 print(solution.fun)
@@ -138,7 +171,7 @@ cut_off = (np.max(x) - np.min(x)) / 20
 sampling_points = np.linspace(np.min(x), np.max(x) + cut_off, 200)  # Projecting 10% ahead of data set
 mean_posterior = np.zeros(sampling_points.size)  # Initialise posterior mean
 cov_posterior = np.zeros(sampling_points.size)  # Initialise posterior covariance
-prior_mean = mean_func_scalar(mean_optimal, x)
+prior_mean = mean_func_linear(grad_optimal, intercept_optimal, x)
 C_dd = matern(v, sigma_optimal, length_optimal, x, x)  # v already defined above
 # C_dd = squared_exp(sigma_optimal, length_optimal, x, x)
 C_dd_noise = C_dd + np.eye(C_dd.shape[0]) * (noise_optimal ** 2)  # Adding optimal noise onto covariance matrix
