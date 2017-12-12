@@ -10,7 +10,7 @@ import csv
 """Importing Point Process Data Set"""
 fig = plt.figure()
 stock_chart = fig.add_subplot(111)
-start = dt.datetime(2001, 1, 1)
+start = dt.datetime(2016, 10, 1)
 end = dt.datetime(2017, 1, 1)  # Manually set end of range
 # end = dt.datetime.now().date()
 present = dt.datetime.now()
@@ -24,4 +24,5 @@ plt.plot(apple["Adj Close"], c='b')  # Plotting stock price wrt to time
 # plt.plot(google["Adj Close"], c='r')
 stock_chart.set_title("Apple Stock Price")
 plt.axis([start, end, 0, 200])
+print(len(apple["Adj Close"]))
 plt.show()
