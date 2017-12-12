@@ -22,6 +22,17 @@ def mean_func_scalar(mean, c):  # Assume that the prior mean is a constant to be
     return mean_c
 
 
+def mean_func_linear(grad, intercept, c):
+    # Create array for gradient component
+    if np.array([c.shape]).size == 1:
+        grad_c = np.ones(1)
+        linear_c = (np.ones(1) * intercept) + (grad * grad_c)
+    else:
+        grad_c = np.arange(c.shape[1])
+        linear_c = (np.ones(c.shape[1]) * intercept) + (grad * grad_c)
+    return linear_c
+
+
 def squared_exp(sigma_exp, length_exp, x1, x2):  # Generates covariance matrix with squared exponential kernel
     c = np.zeros((x1.size, x2.size))  # ensure that the function takes in 2 arrays and not integers
     for i in range(c.shape[0]):
