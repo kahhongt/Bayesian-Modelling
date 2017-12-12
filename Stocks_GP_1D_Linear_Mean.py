@@ -28,7 +28,7 @@ def mean_func_linear(grad, intercept, c):
         grad_c = np.ones(1)
         linear_c = (np.ones(1) * intercept) + (grad * grad_c)
     else:
-        grad_c = np.arange(c.shape[1])
+        grad_c = np.arange(0, c.shape[1], 1)
         linear_c = (np.ones(c.shape[1]) * intercept) + (grad * grad_c)
     return linear_c
 
@@ -148,7 +148,7 @@ for i in range(y_length_interval):
 v = 3/2
 
 xyv_data = (x, y, v)  # Matern function has been entered into the minimise function
-initial_param = np.array([10, 10, 10, 5, 20])  # sigma, length scale, noise
+initial_param = np.array([10, 10, 5, 90, 50])  # sigma, length scale, noise
 # bounds = ((0, 10), (0, 10), (0, 10))  # Hyper-parameters should be positive, Nelder-Mead does not use bounds
 solution = scopt.minimize(fun=log_model_evidence_linear, args=xyv_data, x0=initial_param, method='Nelder-Mead')
 # Currently using kernel matern v = 3/2
@@ -167,7 +167,7 @@ print(x.shape)
 print(y.shape)
 
 """Defining entire range of potential sampling points"""
-cut_off = (np.max(x) - np.min(x)) / 20
+cut_off = (np.max(x) - np.min(x)) / 10
 sampling_points = np.linspace(np.min(x), np.max(x) + cut_off, 200)  # Projecting 10% ahead of data set
 mean_posterior = np.zeros(sampling_points.size)  # Initialise posterior mean
 cov_posterior = np.zeros(sampling_points.size)  # Initialise posterior covariance
@@ -184,7 +184,7 @@ for i in range(sampling_points.size):
     # C_star_d = squared_exp(sigma_optimal, length_optimal, x_star, x)
     # C_star_star = squared_exp(sigma_optimal, length_optimal, x_star, x_star)
     prior_mismatch = y - prior_mean  # Mismatch between actual data and prior mean
-    mean_posterior[i] = mu_post(x_star, C_dd_noise, C_star_d, prior_mismatch, mean_optimal)
+    mean_posterior[i] = mu_post_linear(x_star, C_dd_noise, C_star_d, prior_mismatch, grad_optimal, intercept_optimal)
     cov_posterior[i] = cov_post(C_star_star, C_star_d, C_dd_noise)
 
 
