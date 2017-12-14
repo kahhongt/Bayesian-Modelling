@@ -1,6 +1,7 @@
 import matplotlib
 import numpy as np
 import datetime as dt
+import time
 import pandas as pd
 import pandas_datareader as pdr
 import math
@@ -87,8 +88,10 @@ def log_model_evidence(param, *args):  # Param includes both sigma and l, arg is
     return -log_model_evid  # We want to maximize the log-likelihood, meaning the min of negative log-likelihood
 
 
+time_start = time.clock()  # Time start of computation
+
 """Importing Point Process Data Set"""
-start = dt.datetime(2017, 1, 1)
+start = dt.datetime(2017, 11, 1)
 end = dt.datetime(2017, 10, 1)  # Manually set end of range
 present = dt.datetime.now()
 
@@ -97,13 +100,15 @@ apple = pdr.DataReader("AAPL", 'yahoo', start, present)  # Take note of the capi
 dt_x = (apple.index - start).days  # Have to covert to days first
 x = np.array(dt_x)  # This creates an unmasked numpy array
 y = apple['Adj Close'].values  # numpy.ndarray type
-y_length_interval = round(y.size / 40)
+
+"""  # Resampling to take only values at certain intervals
+y_length_interval = round(y.size / 1)
 for i in range(y_length_interval):
-    y = np.delete(y, 40 * [i])
-    x = np.delete(x, 40 * [i])
+    y = np.delete(y, 1 * [i])
+    x = np.delete(x, 1 * [i])
+"""
 
 v = 3/2
-
 xyv_data = (x, y, v)  # Matern function has been entered into the minimise function
 initial_param = np.array([10, 10, 10, 5])  # sigma, length scale, noise
 # bounds = ((0, 10), (0, 10), (0, 10))  # Hyper-parameters should be positive, Nelder-Mead does not use bounds
@@ -147,6 +152,9 @@ for i in range(sampling_points.size):
 upper_bound = mean_posterior + (2 * np.sqrt(cov_posterior))  # Have to take the square-root of the covariance
 lower_bound = mean_posterior - (2 * np.sqrt(cov_posterior))  # Showing within 3 SD of the posterior mean
 
+time_elapsed = time.clock() - time_start
+print(time_elapsed)
+
 
 stock_chart = plt.figure()
 
@@ -158,7 +166,7 @@ stock_apple.set_xlabel('Time')
 stock_apple.set_ylabel('AAPL Stock Price')
 """
 
-pred_apple = stock_chart.add_subplot(111)
+pred_apple = stock_chart.add_subplot(121)
 # pred_apple.plot(x, y, color='darkred', label='Actual Price', linewidth=0.5)
 pred_apple.plot(sampling_points, mean_posterior, color='darkblue', label='Posterior', linewidth=0.5)
 pred_apple.fill_between(sampling_points, lower_bound, upper_bound, color='lavender')  # Fill between 2-SD
@@ -167,5 +175,10 @@ pred_apple.set_title('AAPL GP Regression')
 pred_apple.set_xlabel('Time from %s to %s' % (start, present))
 pred_apple.set_ylabel('AAPL Stock Posterior Distribution')
 
+cov_apple = stock_chart.add_subplot(122)
+cov_apple.plot(sampling_points, cov_posterior, color='darkblue', label='Covariance', linewidth=0.5)
+cov_apple.set_title('Covariance')
+cov_apple.set_xlabel('Time from %s to %s' % (start, present))
+cov_apple.set_xlabel('Covariance')
 plt.legend()
 plt.show()
