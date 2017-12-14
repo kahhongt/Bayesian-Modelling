@@ -88,7 +88,7 @@ def log_model_evidence(param, *args):  # Param includes both sigma and l, arg is
 
 
 """Importing Point Process Data Set"""
-start = dt.datetime(2017, 7, 1)
+start = dt.datetime(2017, 1, 1)
 end = dt.datetime(2017, 10, 1)  # Manually set end of range
 present = dt.datetime.now()
 
@@ -97,10 +97,10 @@ apple = pdr.DataReader("AAPL", 'yahoo', start, present)  # Take note of the capi
 dt_x = (apple.index - start).days  # Have to covert to days first
 x = np.array(dt_x)  # This creates an unmasked numpy array
 y = apple['Adj Close'].values  # numpy.ndarray type
-y_length_interval = round(y.size / 5)
+y_length_interval = round(y.size / 40)
 for i in range(y_length_interval):
-    y = np.delete(y, 5 * [i])
-    x = np.delete(x, 5 * [i])
+    y = np.delete(y, 40 * [i])
+    x = np.delete(x, 40 * [i])
 
 v = 3/2
 
@@ -159,10 +159,11 @@ stock_apple.set_ylabel('AAPL Stock Price')
 """
 
 pred_apple = stock_chart.add_subplot(111)
-pred_apple.plot(x, y, color='darkred', label='Actual Price', linewidth=0.5)
+# pred_apple.plot(x, y, color='darkred', label='Actual Price', linewidth=0.5)
 pred_apple.plot(sampling_points, mean_posterior, color='darkblue', label='Posterior', linewidth=0.5)
-pred_apple.fill_between(sampling_points, lower_bound, upper_bound, color='skyblue')  # Fill between 2-SD
-pred_apple.set_title('AAPL Prediction')
+pred_apple.fill_between(sampling_points, lower_bound, upper_bound, color='lavender')  # Fill between 2-SD
+pred_apple.scatter(x, y, color='darkred', label='Actual Price', s=3)
+pred_apple.set_title('AAPL GP Regression')
 pred_apple.set_xlabel('Time from %s to %s' % (start, present))
 pred_apple.set_ylabel('AAPL Stock Posterior Distribution')
 

@@ -22,11 +22,11 @@ def mean_func_scalar(mean, c):  # Assume that the prior mean is a constant to be
     return mean_c
 
 
-def mean_func_linear(grad, intercept, c):
+def mean_func_linear(grad, intercept, c):  # Should be the correct linear regression function
     # Create array for gradient component
     if np.array([c.shape]).size == 1:
-        grad_c = np.ones(1)
-        linear_c = (np.ones(1) * intercept) + (grad * grad_c)
+        grad_c = np.arange(0, c.size, 1)
+        linear_c = (np.ones(c.size) * intercept) + (grad * grad_c)
     else:
         grad_c = np.arange(0, c.shape[1], 1)
         linear_c = (np.ones(c.shape[1]) * intercept) + (grad * grad_c)
@@ -141,7 +141,7 @@ dt_x = (apple.index - start).days  # Have to covert to days first
 x = np.array(dt_x)  # This creates an unmasked numpy array
 y = apple['Adj Close'].values  # numpy.ndarray type
 y_length_interval = round(y.size / 5)
-for i in range(y_length_interval):
+for i in range(y_length_interval):  # This is so as to res-ample only weekly data
     y = np.delete(y, 5 * [i])
     x = np.delete(x, 5 * [i])
 
@@ -167,8 +167,8 @@ print(x.shape)
 print(y.shape)
 
 """Defining entire range of potential sampling points"""
-cut_off = (np.max(x) - np.min(x)) / 10
-sampling_points = np.linspace(np.min(x), np.max(x) + cut_off, 200)  # Projecting 10% ahead of data set
+cut_off = (np.max(x) - np.min(x)) / 1
+sampling_points = np.linspace(np.min(x), np.max(x) + cut_off, 200)  # Projecting 10% ahead of data set range
 mean_posterior = np.zeros(sampling_points.size)  # Initialise posterior mean
 cov_posterior = np.zeros(sampling_points.size)  # Initialise posterior covariance
 prior_mean = mean_func_linear(grad_optimal, intercept_optimal, x)
@@ -203,12 +203,15 @@ stock_apple.set_ylabel('AAPL Stock Price')
 """
 
 pred_apple = stock_chart.add_subplot(111)
-pred_apple.plot(x, y, color='darkred', label='Actual Price', linewidth=0.5)
+# pred_apple.plot(x, y, color='darkred', label='Actual Price', linewidth=0.5)
 pred_apple.plot(sampling_points, mean_posterior, color='darkblue', label='Posterior', linewidth=0.5)
-pred_apple.fill_between(sampling_points, lower_bound, upper_bound, color='skyblue')  # Fill between 2-SD
-pred_apple.set_title('AAPL Prediction')
+pred_apple.fill_between(sampling_points, lower_bound, upper_bound, color='lavender')  # Fill between 2-SD
+pred_apple.scatter(x, y, color='darkred', s=5)
+pred_apple.set_title('AAPL GP Regression')
 pred_apple.set_xlabel('Time from %s to %s' % (start, present))
 pred_apple.set_ylabel('AAPL Stock Posterior Distribution')
 
 plt.legend()
 plt.show()
+
+# The regression appears to diverge far from the data set, which may suggest that the linear mean is not a good fit

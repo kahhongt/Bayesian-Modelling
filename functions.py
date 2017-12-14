@@ -188,8 +188,15 @@ def optimise_param(opt_func, opt_arg, opt_method, boundary):
     return optimal_parameters
 
 
-
-
+def mean_func_linear(grad, intercept, c):  # Should be the correct linear regression function
+    # Create array for gradient component
+    if np.array([c.shape]).size == 1:
+        grad_c = np.arange(0, c.size, 1)
+        linear_c = (np.ones(c.size) * intercept) + (grad * grad_c)
+    else:
+        grad_c = np.arange(0, c.shape[1], 1)
+        linear_c = (np.ones(c.shape[1]) * intercept) + (grad * grad_c)
+    return linear_c
 
 
 
