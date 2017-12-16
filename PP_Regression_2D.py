@@ -247,6 +247,7 @@ cov_posterior = np.zeros(sampling_coord.shape[1])
 prior_mean = mean_func_scalar(mean_optimal, xy_data_coord)  # should be one row of zeros even though data has two rows
 # The prior mean is now non-zero - the last element of the argument set
 
+print(xy_data_coord)
 """Create auto-covariance matrix"""
 C_dd = matern_2d(matern_v, sigma_optimal, length_optimal, xy_data_coord, xy_data_coord)
 C_noise = np.eye(C_dd.shape[0]) * (noise_optimal ** 2)
@@ -268,7 +269,7 @@ for i in range(sampling_coord.shape[1]):
 
 
 """Creating 2-D inputs for plotting surfaces"""
-sampling_x_2d = sampling_x_row.reshape(intervals, intervals)
+sampling_x_2d = sampling_x_row.reshape(intervals, intervals)  # 2-dimensional input after reshaping both in the same way
 sampling_y_2d = sampling_y_row.reshape(intervals, intervals)
 mean_posterior_2d = mean_posterior.reshape(intervals, intervals)
 cov_posterior_2d = cov_posterior.reshape(intervals, intervals)

@@ -12,19 +12,9 @@ matplotlib.use('TkAgg')
 """Simple Introductory Definitions"""
 
 
-def happy_birthday():  # The function name must have a good spelling as well
-    print("Happy Birthday to You")
-    print("Happy Birthday to You")
-    print("Happy Birthday to Me")
-    print("Happy Birthday to You")
-
-
 def summation(a, b):  # x and y are input arguments
     c = a + b
     return c
-
-
-# print(summation(2, 1))
 
 
 def array_summation(a):  # Computing the sum of a list
@@ -33,20 +23,6 @@ def array_summation(a):  # Computing the sum of a list
     for i in range(a.shape[0] + 1):  # Note range doesn't include the upper limit
         q = q + i
     return q
-
-
-"""
-x = np.arange(1, 6, 1)  # This is an array, so shape can be used
-print(x.shape[0])
-print(x)
-y = np.array([1, 2, 3, 4, 5])
-z = [1, 2, 3, 4, 5]  # This is a list, so shape cannot be used
-print(y)  # Printing an array
-print(z)  # Printing a list
-print(array_summation(y))  # I can use this for x and y but not z as z is a list, not an array
-"""
-
-"""Create a function that solves a quadratic function containing coefficients a, b and c"""
 
 
 def solve_quadratic(a, b, c):

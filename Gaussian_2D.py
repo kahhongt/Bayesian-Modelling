@@ -47,6 +47,8 @@ S, V, D = np.linalg.svd(C, full_matrices=True)  # Singular Value Decomposition
 diagonal_V = np.diag(V)  # Constructing a diagonal matrix
 z = np.matmul(S, np.matmul(np.sqrt(diagonal_V), r))
 zv = np.reshape(z, (x.size, y.size))
+print(z.shape)
+print(zv.shape)
 
 fig = plt.figure()
 g_surface = fig.add_subplot(111, projection="3d")
