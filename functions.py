@@ -1,5 +1,4 @@
 import numpy as np
-import time
 from numpy.lib import scimath
 import scipy.optimize as scopt
 import matplotlib

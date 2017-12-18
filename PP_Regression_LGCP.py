@@ -72,16 +72,27 @@ def poisson_product(k_array, landa_array):
     if np.array(landa_array.shape).size == 1:
         for i in range(len(k_array)):
             prob_array[i] = poisson_cont(k_array[i], landa_array)
-            p_likelihood = np.prod(prob_array)
         else:
             if len(k_array) == len(landa_array):
                 for i in range(len(prob_array)):
                     prob_array[i] = poisson_cont(k_array[i], landa_array[i])
-                p_likelihood = np.prod(prob_array)
             else:
                 print('Length Mismatch')
+    p_likelihood = np.prod(prob_array)  # Taking combined product of distributions
     # Note output is a scalar (singular value)
     return p_likelihood  # Returns the non logarithmic version.
+
+
+def log_special(array):
+    """Taking an element-wise natural log of the array, retain array dimensions"""
+    """with the condition that log(0) = 0, so there are no -inf elements"""
+    log_array = np.zeros(array.size)
+    for i in range(array.size):
+        if array[i] == 0:
+            log_array[i] = 0
+        else:
+            log_array[i] = np.log(array[i])
+    return log_array
 
 
 def mean_func_zero(c):  # Prior mean function taken as 0 for the entire sampling range
@@ -243,7 +254,8 @@ x_transform = np.ravel(df_transform[0])
 y_transform = np.ravel(df_transform[1])
 
 """Bin point process data"""
-histo, x_edges, y_edges = np.histogram2d(x_transform, y_transform, bins=10)
+bins_number = 10
+histo, x_edges, y_edges = np.histogram2d(x_transform, y_transform, bins=bins_number)
 xv_trans_data, yv_trans_data = np.meshgrid(x_edges, y_edges)
 xv_trans_data = xv_trans_data[:-1, :-1]  # Removing the last bin edge and zero points to make dimensions consistent
 yv_trans_data = yv_trans_data[:-1, :-1]  # Contains a square matrix
@@ -253,41 +265,63 @@ histo = fn.row_create(histo)
 # xv_transform_row = xv_transform_row[histo != 0]  # Remove data point at histogram equal 0
 # yv_transform_row = yv_transform_row[histo != 0]
 # histo = histo[histo != 0]  # This is after putting them into rows
-xy_data_coord = np.vstack((xv_trans_row, yv_trans_row))  # location of all the data points
 
 """
 Data point coordinates are now at bottom-left hand corner, coordinates of data points have
 to be centralised to the centre of each quadrat
 """
+# Centralizing coordinates for each quadrat
+xv_trans_row = xv_trans_row + 0.5 * ((x_edges[-1] - x_edges[0]) / bins_number)
+yv_trans_row = yv_trans_row + 0.5 * ((y_edges[-1] - y_edges[0]) / bins_number)
+
+# Stack into 2 rows of many columns
+xy_data_coord = np.vstack((xv_trans_row, yv_trans_row))  # location of all the data points
+
+"""Generate auto-covariance matrix with noise - using arbitrary hyper-parameters first"""
+sigma_arb = 7
+length_arb = 5
+noise_arb = 2
+v = 3/2
+
+c_auto = matern_2d(v, sigma_arb, length_arb, xy_data_coord, xy_data_coord)
+c_auto_noise = c_auto + (noise_arb ** 2) * np.eye(c_auto.shape[0])
+
+# *** The denominator of the posterior is only evaluated at the maximum vhap
+# and are thus independent of the values in array v. We need to find the optimal value of v
+
+"""Prior mean is arbitrary for now, but can be changed into a parameter afterwards"""
+"""Prior mean is now taken to be the average of the sum of natural log(histo)"""
+gp_mean_v = np.average(log_special(histo))  # Need to take log(0) = 0
+print(gp_mean_v)
+print(log_special(histo))
 
 
-print(xy_data_coord.shape)
+# Note that v is an array of parameters to be optimised,
+# later together with the kernel hyper-parameters
 
-"""Note the above relates to obtaining the data set first"""
-"""Generate Gaussian Surface which forms the basis of the latent intensity function"""
 
+
+lgcp_fig = plt.figure()
+
+data_plot = lgcp_fig.add_subplot(111, projection='3d')
+data_plot.scatter(xv_trans_row, yv_trans_row, histo, marker='.', color='darkblue')
+
+plt.show()
+
+"""
 # Select Optimization method for hyper-parameters and other conditions
 opt_method = 'nelder-mead'
 matern_v = 3/2  # Define matern_v
 xyz_data = (xy_data_coord, histo, matern_v)
 boundary_self = [(0, 30), (0, 3), (0, 3), (0, 10)]  # Can even use this into Nelder-Mead
 
-"""Optimization using self-made function"""
+# Optimization using self-made function
 param_optimal = fn.optimise_param(opt_func=log_model_evidence, opt_arg=xyz_data, opt_method=opt_method,
                                   boundary=boundary_self)
+"""
 
-sigma_optimal = param_optimal[0]
-length_optimal = param_optimal[1]
-noise_optimal = param_optimal[2]
-mean_optimal = param_optimal[3]  # Getting the optimal parameters
-
-
-"""Generate Covariance Matrix from Sampling Points"""
-C_auto = matern_2d(matern_v, sigma_optimal, length_optimal, xy_data_coord, xy_data_coord)
-C_auto = C_auto + np.eye(C_auto.shape[0]) * noise_optimal  # include noise
-
-
-"""Generate Gaussian Random field - but just one example"""
+"""
+# Generate Gaussian Random field - but just one example
 r = np.random.randn(C_auto.shape[0], 1)  # Creates a column of random values with mean 0 and variance 1
 S, V, D = np.linalg.svd(C_auto, full_matrices=True)  # Singular Value Decomposition
 diagonal_V = np.diag(V)  # Constructing a diagonal matrix from the decomposed matrix
@@ -295,35 +329,7 @@ z = fn.matmulmul(S, np.sqrt(diagonal_V), r)  # This is a column containing the g
 zv = np.reshape(z, (x_edges[:-1].size, y_edges[:-1].size))  # Reshape to 2-D matrix form - bin in the same way as data
 # Generated a Gaussian Random Field - Note that this gaussian random surface keeps changing
 
-
-"""Measure Marginal Log-likelihood for data points"""
-data_exp = np.exp(histo)  # This gives the k-array
-# likelihood_total = poisson_likelihood(data_exp, z_exp)
-# log_likelihood_total = np.log(likelihood_total)
-
-lgcp = plt.figure()
-g_surface = lgcp.add_subplot(221, projection="3d")
-g_surface.plot_surface(xv_trans_data, yv_trans_data, zv, cmap='RdBu')
-g_surface.scatter(xv_trans_row, yv_trans_row, z, marker='.', color='black')
-g_surface.set_title('Gaussian Random Field (Matern v = 3/2)')
-g_surface.set_xlabel('x-axis')
-g_surface.set_ylabel('y-axis')
-
-g_exp_surface = lgcp.add_subplot(222, projection='3d')
-g_exp_surface.plot_surface(xv_trans_data, yv_trans_data, zv_exp, cmap='RdBu')
-g_exp_surface.set_title('Exp of GRF')
-g_exp_surface.set_xlabel('x-axis')
-g_exp_surface.set_ylabel('y-axis')
-
-data_plot = lgcp.add_subplot(223, projection='3d')
-data_plot.scatter(xv_trans_row, yv_trans_row, histo, marker='.', color='black')
-data_plot.set_title('Data Points')
-data_plot.set_xlabel('x-axis')
-data_plot.set_ylabel('y-axis')
-
-plt.show()
-
-
+"""
 
 
 
