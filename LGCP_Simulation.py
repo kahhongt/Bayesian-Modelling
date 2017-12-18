@@ -5,6 +5,7 @@ import numpy as np
 import time
 import functions as fn
 import scipy
+import scipy.special as scispec
 import scipy.optimize as scopt
 
 matplotlib.use('TkAgg')
@@ -12,14 +13,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 """
-Goal here is to create a LGCP Simulation based on an arbitrarily selection gaussian field w - doubly stochastic
- - In order to compute the posterior marginals of latent function x given observations, and function of 
- hyper--parameters theta, given observations y
-1. Generate a gaussian random field by creating  a 2-D Gaussian Process Surface 
-2. Allow the gaussian random field w to describe the latent intensity field X (X = log(w) in this case)
-3. Generate the overall likelihood of obtaining those data points
-
-
 Preamble on LGCP
 1. Used to infer non-stationary Poisson Processes. Need to guarantee positive definite covariance matrices.
 2, A Cox Process is a non-homogeneous Poisson Point Process where 
@@ -27,33 +20,68 @@ the underlying intensity landa is itself a stochastic process
 3. We assume that the log-intensity of the point process is a GP, and we have to take the exponential of the gaussian 
 surface to obtain the latent intensity surface
 
+We need to optimise by trying to maximise the posterior, which will give us the greatest possibility of
+the latent intensity, given the data. Our goal is to predict log(landa) = v, not landa directly
+
+LGCPs are not capable of producing predictions for any input vector, but only for inputs 
+corresponding to the observations.
+
+The hessian is the the second derivative of the log-likelihood function
+
+Proper Steps to follow:
+1. Assume arbitrary covariance matrix parameters for the base case  - theta is fixed at an optimal value
+2. Assume p(theta) is a delta function at those parameters
+3. Goal here is to obtain v = log(landa), where landa is the actual intensity.
+4. We are here predicting the posterior for v instead of landa
+5. v follows a gaussian process, and there is only one optimal value set of values
+6. m refers to the number of bins/quadrats
+
+Tabulating Posterior
+a. Numerator:
+    - Product of poisson distributions across the data set and gaussian process prior on v
+    - This is tabulated at an arbitrary set of hyperparameters - to be optimised later
+b. Denominator: Intractable integral
+    - 
+
+7. Tabulate optimal v values using laplace approximation for the denominator
+8. Tabulate optimal covariance from the Hessian
 """
 
 
-# Define Poisson Distribution function for each quadrat
-def poisson(k, landa):  # Takes in two parameters intensity landa and observation value k
+# Define Poisson Distribution function for each quadrat - homogeneous Poisson
+def poisson_discrete(k, landa):  # Takes in two parameters intensity landa and observation value k
     numerator = np.power(landa, k) * np.exp(-1 * landa)  # mean and covariance are both landa
     denominator = math.factorial(k)
     p = numerator / denominator
     return p
 
 
+def poisson_cont(k, landa):  # to allow for non-integer k values
+    numerator = np.power(landa, k) * np.exp(-1 * landa)
+    denominator = scispec.gamma(k)  # Generalised factorial function for non-integer k values
+    p = numerator / denominator
+    return p
+
+
 # Create log likelihood for all quadrats, for both homogeneous and non-homogeneous PPP
-def poisson_log_likelihood(k_array, landa_array):
-    prob_array = np.zeros(len(k_array))
+def poisson_product(k_array, landa_array):
+    """Takes in 2 arrays of equal size, and takes product of poisson distributions"""
+    quadrats = len(k_array)  # define the number of quadrats in total
+    prob_array = np.zeros(quadrats)
+
     if np.array(landa_array.shape).size == 1:
         for i in range(len(k_array)):
-            prob_array[i] = poisson(k_array[i], landa_array)
+            prob_array[i] = poisson_cont(k_array[i], landa_array)
             p_likelihood = np.prod(prob_array)
         else:
             if len(k_array) == len(landa_array):
                 for i in range(len(prob_array)):
-                    prob_array[i] = poisson(k_array[i], landa_array[i])
+                    prob_array[i] = poisson_cont(k_array[i], landa_array[i])
                 p_likelihood = np.prod(prob_array)
             else:
                 print('Length Mismatch')
-    log_p_likelihood = np.log(p_likelihood)
-    return log_p_likelihood
+    # Note output is a scalar (singular value)
+    return p_likelihood  # Returns the non logarithmic version.
 
 
 def mean_func_zero(c):  # Prior mean function taken as 0 for the entire sampling range
@@ -166,7 +194,8 @@ def mu_post(p_mean, xy_next, c_auto, c_cross, mismatch):  # Posterior mean
     if c_auto.shape[0] != (np.transpose(mismatch)).shape[0]:
         print('Second Dimension Mismatch!')
     else:
-        mean_post = mean_func_scalar(p_mean, xy_next) + fn.matmulmul(c_cross, np.linalg.inv(c_auto), np.transpose(mismatch))
+        mean_post = mean_func_scalar(p_mean, xy_next) + \
+                    fn.matmulmul(c_cross, np.linalg.inv(c_auto), np.transpose(mismatch))
         return mean_post
 
 
@@ -197,7 +226,6 @@ def log_model_evidence(param, *args):  # Param includes both sigma and l, arg is
 
 
 """Collate Data Points from PP_Data"""
-
 time_start = time.clock()  # Start computation time measurement
 
 """Extract Data from csv"""  # Arbitrary Point Process Data
@@ -226,6 +254,12 @@ histo = fn.row_create(histo)
 # yv_transform_row = yv_transform_row[histo != 0]
 # histo = histo[histo != 0]  # This is after putting them into rows
 xy_data_coord = np.vstack((xv_trans_row, yv_trans_row))  # location of all the data points
+
+"""
+Data point coordinates are now at bottom-left hand corner, coordinates of data points have
+to be centralised to the centre of each quadrat
+"""
+
 
 print(xy_data_coord.shape)
 
@@ -261,10 +295,6 @@ z = fn.matmulmul(S, np.sqrt(diagonal_V), r)  # This is a column containing the g
 zv = np.reshape(z, (x_edges[:-1].size, y_edges[:-1].size))  # Reshape to 2-D matrix form - bin in the same way as data
 # Generated a Gaussian Random Field - Note that this gaussian random surface keeps changing
 
-"""Taking exponential of the Gaussian Random Field - for the LGCP"""
-
-z_exp = np.exp(z)  # This is now the latent intensity field, next we have to compare this with the data
-zv_exp = np.exp(zv)  # The latent intensity function, based on a simulated gaussian surface
 
 """Measure Marginal Log-likelihood for data points"""
 data_exp = np.exp(histo)  # This gives the k-array

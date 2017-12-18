@@ -180,3 +180,6 @@ def mean_func_linear(grad, intercept, c):  # Should be the correct linear regres
 
 
 
+
+
+
