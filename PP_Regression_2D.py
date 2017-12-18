@@ -128,7 +128,8 @@ def mu_post(p_mean, xy_next, c_auto, c_cross, mismatch):  # Posterior mean
     if c_auto.shape[0] != (np.transpose(mismatch)).shape[0]:
         print('Second Dimension Mismatch!')
     else:
-        mean_post = mean_func_scalar(p_mean, xy_next) + fn.matmulmul(c_cross, np.linalg.inv(c_auto), np.transpose(mismatch))
+        mean_post = mean_func_scalar(p_mean, xy_next) + fn.matmulmul(c_cross, np.linalg.inv(c_auto),
+                                                                     np.transpose(mismatch))
         return mean_post
 
 

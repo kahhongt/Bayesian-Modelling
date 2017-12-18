@@ -236,6 +236,42 @@ def log_model_evidence(param, *args):  # Param includes both sigma and l, arg is
     return -log_model_evid  # We want to maximize the log-likelihood, meaning the min of negative log-likelihood
 
 
+# Each region is assumed to not have a constant log-intensity, uni-variate gaussian distribution assumed
+def posterior_num(k_array, v_array, gaussian_mean, cov_matrix):
+    """numerator consists of product of poisson distribution and distribution of v given arbitrary hyper-parameters"""
+    if len(k_array) == len(v_array):
+        m = len(k_array)
+        exp_v_array = np.exp(v_array)  # Discretization is now removed
+        """Poisson Distribution Product"""
+        poisson_dist_product = poisson_product(k_array, exp_v_array)  # Uses a generalised factorial - gamma function
+        """Construct latter v distribution term"""
+        v_distribution_coeff = (((2 * np.pi) ** m) * np.linalg.det(cov_matrix)) ** (-0.5)
+        v_distribution_power = - 0.5 * fn.matmulmul(v_array - gaussian_mean, np.linalg.inv(cov_matrix),
+                                                np.transpose(v_array - gaussian_mean))
+        v_distribution = v_distribution_coeff * np.exp(v_distribution_power)
+        """Overall posterior numerator"""
+        post_num_overall = poisson_dist_product * v_distribution
+
+    else:
+        print('k and v arrays do not have matching dimensions')
+
+    return post_num_overall
+
+
+"""Generate posterior numerator function form for optimization"""
+
+
+def posterior_numerator(param, *args):
+    """We want to find the optimal v_array, so this is the parameter to be optimised"""
+    v_array = param
+    """args points to a tuple with 3 components, so have to create a tuple to contain them first"""
+    k_array = args[0]
+    gaussian_mean = args[1]
+    covariance_matrix = args[2]
+    posterior_numerator_value = posterior_num(k_array, v_array, gaussian_mean, covariance_matrix)
+    return posterior_numerator_value
+
+
 """Collate Data Points from PP_Data"""
 time_start = time.clock()  # Start computation time measurement
 
@@ -282,26 +318,36 @@ sigma_arb = 7
 length_arb = 5
 noise_arb = 2
 v = 3/2
+# Remember arbitrary hyper-parameters were chosen
 
-c_auto = matern_2d(v, sigma_arb, length_arb, xy_data_coord, xy_data_coord)
-c_auto_noise = c_auto + (noise_arb ** 2) * np.eye(c_auto.shape[0])
+c_dd = matern_2d(v, sigma_arb, length_arb, xy_data_coord, xy_data_coord)
+c_dd_noise = c_dd + (noise_arb ** 2) * np.eye(c_dd.shape[0])
 
-# *** The denominator of the posterior is only evaluated at the maximum vhap
+# *** The denominator of the posterior is only evaluated at the optimal vhap which is an array
 # and are thus independent of the values in array v. We need to find the optimal value of v
 
 """Prior mean is arbitrary for now, but can be changed into a parameter afterwards"""
-"""Prior mean is now taken to be the average of the sum of natural log(histo)"""
+"""Prior mean is now taken to be the average of the sum of natural log(histo) across the entire grid"""
 gp_mean_v = np.average(log_special(histo))  # Need to take log(0) = 0
-print(gp_mean_v)
-print(log_special(histo))
+# Simplified mean tabulation,otherwise the mean will have to be a parameter to be optimised
 
+
+"""Find vhap, which generates the maximum of the numerator of the posterior"""
+# Initialise array containing v, which also defines dimensions and value of initial parameters before optimization
+v = np.zeros(xy_data_coord.shape[1])  # Taking the number of binned data points
+
+
+"""Define arguments and initial parameters - args, initial_param, boundary, function to be optimised"""
+
+
+# Need to create a likelihood function to be minimised, which generates a set of v that is the maximum
 
 # Note that v is an array of parameters to be optimised,
 # later together with the kernel hyper-parameters
 
 
 
-lgcp_fig = plt.figure()
+fig_lgcp = plt.figure()
 
 data_plot = lgcp_fig.add_subplot(111, projection='3d')
 data_plot.scatter(xv_trans_row, yv_trans_row, histo, marker='.', color='darkblue')

@@ -132,11 +132,10 @@ def initial_param_latin(bounds, guesses):  # guesses is an arbitrary input value
 
 
 # Global Optimisation of Parameters attempt - generates the optimal parameters in the form of an array
-def optimise_param(opt_func, opt_arg, opt_method, boundary):
+def optimise_param(opt_func, opt_arg, opt_method, boundary, initial_param):
 
     # note that opt_arg is a tuple containing xy_data_coord, histo and matern_v
     if opt_method == 'nelder-mead':  # Uses only an arbitrary starting point
-        initial_param = np.array([10, 3, 3, 10])  # sigma, length, noise and prior mean starting point of iteration
         # No bounds needed for Nelder-Mead
         # Have to check that all values are positive
         solution = scopt.minimize(fun=opt_func, args=opt_arg, x0=initial_param, method='Nelder-Mead')
