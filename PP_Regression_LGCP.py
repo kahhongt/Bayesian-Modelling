@@ -258,9 +258,7 @@ def posterior_num(k_array, v_array, gaussian_mean, cov_matrix):
     return post_num_overall
 
 
-"""Generate posterior numerator function form for optimization"""
-
-
+# Generate posterior numerator function form for optimization
 def posterior_numerator(param, *args):
     """We want to find the optimal v_array, so this is the parameter to be optimised"""
     v_array = param
@@ -323,6 +321,9 @@ v = 3/2
 c_dd = matern_2d(v, sigma_arb, length_arb, xy_data_coord, xy_data_coord)
 c_dd_noise = c_dd + (noise_arb ** 2) * np.eye(c_dd.shape[0])
 
+print(c_dd_noise)
+print(c_dd_noise.shape)
+
 # *** The denominator of the posterior is only evaluated at the optimal vhap which is an array
 # and are thus independent of the values in array v. We need to find the optimal value of v
 
@@ -335,7 +336,9 @@ gp_mean_v = np.average(log_special(histo))  # Need to take log(0) = 0
 """Find vhap, which generates the maximum of the numerator of the posterior"""
 # Initialise array containing v, which also defines dimensions and value of initial parameters before optimization
 v = np.zeros(xy_data_coord.shape[1])  # Taking the number of binned data points
+# The above refers to the initial parameters for optimisation
 
+arguments = (histo, gp_mean_v, c_dd_noise)
 
 """Define arguments and initial parameters - args, initial_param, boundary, function to be optimised"""
 
