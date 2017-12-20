@@ -173,7 +173,48 @@ def mean_func_linear(grad, intercept, c):  # Should be the correct linear regres
     return linear_c
 
 
+"""Numerical Integration Methods"""
+# MCMC Sampling, Laplace's Approximation, Bayesian Quadrature
 
+
+def laplace_approx(approx_func, approx_args, initial_param, approx_method):
+    """Finding an approximation to the integral of the function using Laplace's Approximation"""
+    # Takes in a function and imposes a gaussian function over it
+    # Measure uncertainty from actual value. As M increases, the approximation of the function by
+    # a gaussian function gets better. Note that an unscaled gaussian function is used.
+    """Tabulate the global maximum of the function - within certain boundaries - using latin hypercube"""
+    solution = scopt.minimize(fun=approx_func, arg=approx_args, x0=initial_param, method=approx_method)
+    optimal_param_vect = solution.x
+    optimal_func_val = solution.fun
+
+    """Generate matrix of second derivatives - The Hessian Matrix of the function"""
+    return optimal_param_vect, optimal_func_val
+
+
+def hessian(matrix):  # Generates the hessian
+    """Generate Hessian Matrix with finite differences - with multiple dimensions"""
+    """Takes in any array/matrix and generates Hessian with 
+    the dimensions (np.ndim(matrix), np.ndim(matrix), matrix.shape[0]. matrix.shape[1])"""
+
+    matrix_grad = np.gradient(matrix)
+    # Initialise Hessian - note the additional dimensions due to different direction of iteration
+    hessian_matrix = np.zeros((np.ndim(matrix), np.ndim(matrix)) + matrix.shape)  # initialise correct dimensions
+    for i, gradient_i in enumerate(matrix_grad):
+        intermediate_grad = np.gradient(gradient_i)
+        for j, gradient_ij in enumerate(intermediate_grad):
+            hessian_matrix[i, j, :, :] = gradient_ij
+    """Note the output will contain second derivatives in each dimensions (ii, ij, ji, jj), resulting in
+    more dimensions in the hessian matrix"""
+    return hessian_matrix
+
+
+def jacobian(matrix):
+    """Generate first derivative of a matrix - the jacobian"""
+    matrix_grad = np.gradient(matrix)
+    jacobian_matrix = np.zeros((np.ndim(matrix),) + matrix.shape)
+    for i, gradient_i in enumerate(matrix_grad):
+        jacobian_matrix[i, :, :] = gradient_i
+    return jacobian_matrix
 
 
 

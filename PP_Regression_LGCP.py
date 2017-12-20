@@ -24,9 +24,12 @@ We need to optimise by trying to maximise the posterior, which will give us the 
 the latent intensity, given the data. Our goal is to predict log(landa) = v, not landa directly
 
 LGCPs are not capable of producing predictions for any input vector, but only for inputs 
-corresponding to the observations.
+corresponding to the observations. The resulting values of v will then form the predicted mean of the model
 
 The hessian is the the second derivative of the log-likelihood function
+Unlike standard GP Regression. LGCPs are not capable of producing predictions for any input vector, but only for inputs
+corresponding to the observations. The resulting values of v will then form the predicted mean of the model.
+LGCP can only predict where there has been a data point
 
 Proper Steps to follow:
 1. Assume arbitrary covariance matrix parameters for the base case  - theta is fixed at an optimal value
@@ -39,12 +42,13 @@ Proper Steps to follow:
 Tabulating Posterior
 a. Numerator:
     - Product of poisson distributions across the data set and gaussian process prior on v
-    - This is tabulated at an arbitrary set of hyperparameters - to be optimised later
-b. Denominator: Intractable integral
-    - 
-
-7. Tabulate optimal v values using laplace approximation for the denominator
+    - This is tabulated at an arbitrary set of hyper-parameters - to be optimised later
+b. Denominator - intractable integral
+    - Laplace's Approximation
+    - Bayesian Quadrature
+    - MCMC Sampling
 8. Tabulate optimal covariance from the Hessian
+    - The matrix inverse of the Hessian is the covariance at that point - there is no explicit function
 """
 
 
@@ -320,9 +324,7 @@ v = 3/2
 
 c_dd = matern_2d(v, sigma_arb, length_arb, xy_data_coord, xy_data_coord)
 c_dd_noise = c_dd + (noise_arb ** 2) * np.eye(c_dd.shape[0])
-
-print(c_dd_noise)
-print(c_dd_noise.shape)
+# This shall be the auto-covariance matrix for the optimization
 
 # *** The denominator of the posterior is only evaluated at the optimal vhap which is an array
 # and are thus independent of the values in array v. We need to find the optimal value of v
@@ -349,10 +351,9 @@ arguments = (histo, gp_mean_v, c_dd_noise)
 # later together with the kernel hyper-parameters
 
 
-
 fig_lgcp = plt.figure()
 
-data_plot = lgcp_fig.add_subplot(111, projection='3d')
+data_plot = fig_lgcp.add_subplot(111, projection='3d')
 data_plot.scatter(xv_trans_row, yv_trans_row, histo, marker='.', color='darkblue')
 
 plt.show()
