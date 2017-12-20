@@ -177,20 +177,6 @@ def mean_func_linear(grad, intercept, c):  # Should be the correct linear regres
 # MCMC Sampling, Laplace's Approximation, Bayesian Quadrature
 
 
-def laplace_approx(approx_func, approx_args, initial_param, approx_method):
-    """Finding an approximation to the integral of the function using Laplace's Approximation"""
-    # Takes in a function and imposes a gaussian function over it
-    # Measure uncertainty from actual value. As M increases, the approximation of the function by
-    # a gaussian function gets better. Note that an unscaled gaussian function is used.
-    """Tabulate the global maximum of the function - within certain boundaries - using latin hypercube"""
-    solution = scopt.minimize(fun=approx_func, arg=approx_args, x0=initial_param, method=approx_method)
-    optimal_param_vect = solution.x
-    optimal_func_val = solution.fun
-
-    """Generate matrix of second derivatives - The Hessian Matrix of the function"""
-    return optimal_param_vect, optimal_func_val
-
-
 def hessian(matrix):  # Generates the hessian
     """Generate Hessian Matrix with finite differences - with multiple dimensions"""
     """Takes in any array/matrix and generates Hessian with 
@@ -215,6 +201,20 @@ def jacobian(matrix):
     for i, gradient_i in enumerate(matrix_grad):
         jacobian_matrix[i, :, :] = gradient_i
     return jacobian_matrix
+
+
+def laplace_approx(approx_func, approx_args, initial_param, approx_method):
+    """Finding an approximation to the integral of the function using Laplace's Approximation"""
+    # Takes in a function and imposes a gaussian function over it
+    # Measure uncertainty from actual value. As M increases, the approximation of the function by
+    # a gaussian function gets better. Note that an unscaled gaussian function is used.
+    """Tabulate the global maximum of the function - within certain boundaries - using latin hypercube"""
+    solution = scopt.minimize(fun=approx_func, arg=approx_args, x0=initial_param, method=approx_method)
+    optimal_param_vect = solution.x  # location of maximum
+    optimal_func_val = solution.fun  # value at maximum of function
+
+    """Generate matrix of second derivatives - The Hessian Matrix of the function"""
+    return optimal_param_vect, optimal_func_val
 
 
 
