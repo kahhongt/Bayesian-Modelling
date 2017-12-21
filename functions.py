@@ -203,7 +203,8 @@ def jacobian(matrix):
     return jacobian_matrix
 
 
-def laplace_approx(approx_func, approx_args, initial_param, approx_method):
+# Goal here is to estimate the denominator of the posterior
+def laplace_approx(approx_func, approx_args, initial_param, approx_method):  # Note this is a general laplace approx
     """Finding an approximation to the integral of the function using Laplace's Approximation"""
     # Takes in a function and imposes a gaussian function over it
     # Measure uncertainty from actual value. As M increases, the approximation of the function by
@@ -212,6 +213,13 @@ def laplace_approx(approx_func, approx_args, initial_param, approx_method):
     solution = scopt.minimize(fun=approx_func, arg=approx_args, x0=initial_param, method=approx_method)
     optimal_param_vect = solution.x  # location of maximum
     optimal_func_val = solution.fun  # value at maximum of function
+
+    """Reshape function values into a mesh grid - function takes in coordinates to generate an array of values"""
+
+
+
+    """Tabulate the Hessian of the natural log of the function evaluated at optimal point"""
+
 
     """Generate matrix of second derivatives - The Hessian Matrix of the function"""
     return optimal_param_vect, optimal_func_val

@@ -61,19 +61,18 @@ def poisson_discrete(k, landa):  # Takes in two parameters intensity landa and o
 
 
 def poisson_cont(k, landa):  # to allow for non-integer k values
-    numerator = np.power(landa, k) * np.exp(-1 * landa)
-    denominator = scispec.gamma(k)  # Generalised factorial function for non-integer k values
-    p = numerator / denominator
+    numerator_p = np.power(landa, k) * np.exp(-1 * landa)
+    denominator_p = scispec.gamma(k)  # Generalised factorial function for non-integer k values
+    p = numerator_p / denominator_p
     return p
 
 
-# Create log likelihood for all quadrats, for both homogeneous and non-homogeneous PPP
 def poisson_product(k_array, landa_array):
     """Takes in 2 arrays of equal size, and takes product of poisson distributions"""
     quadrats = len(k_array)  # define the number of quadrats in total
     prob_array = np.zeros(quadrats)
 
-    if np.array(landa_array.shape).size == 1:
+    if landa_array.size == 1:
         for i in range(len(k_array)):
             prob_array[i] = poisson_cont(k_array[i], landa_array)
         else:
@@ -241,7 +240,7 @@ def log_model_evidence(param, *args):  # Param includes both sigma and l, arg is
 
 
 # Each region is assumed to not have a constant log-intensity, uni-variate gaussian distribution assumed
-def posterior_num(k_array, v_array, gaussian_mean, cov_matrix):
+def posterior_num(v_array, k_array, gaussian_mean, cov_matrix):
     """numerator consists of product of poisson distribution and distribution of v given arbitrary hyper-parameters"""
     if len(k_array) == len(v_array):
         m = len(k_array)
@@ -251,7 +250,7 @@ def posterior_num(k_array, v_array, gaussian_mean, cov_matrix):
         """Construct latter v distribution term"""
         v_distribution_coeff = (((2 * np.pi) ** m) * np.linalg.det(cov_matrix)) ** (-0.5)
         v_distribution_power = - 0.5 * fn.matmulmul(v_array - gaussian_mean, np.linalg.inv(cov_matrix),
-                                                np.transpose(v_array - gaussian_mean))
+                                                    np.transpose(v_array - gaussian_mean))
         v_distribution = v_distribution_coeff * np.exp(v_distribution_power)
         """Overall posterior numerator"""
         post_num_overall = poisson_dist_product * v_distribution
@@ -272,6 +271,40 @@ def posterior_numerator(param, *args):
     covariance_matrix = args[2]
     posterior_numerator_value = posterior_num(k_array, v_array, gaussian_mean, covariance_matrix)
     return posterior_numerator_value
+    # This is without regard to the size of the intervals
+
+
+# Goal here is to estimate the denominator of the posterior
+def laplace_approx(approx_func, approx_args, initial_param, approx_method):  # Note this is a general laplace approx
+    """Finding an approximation to the integral of the function using Laplace's Approximation"""
+    # Takes in a function and imposes a gaussian function over it
+    # Measure uncertainty from actual value. As M increases, the approximation of the function by
+    # a gaussian function gets better. Note that an unscaled gaussian function is used.
+    """Tabulate the global maximum of the function - within certain boundaries - using latin hypercube"""
+    solution = scopt.minimize(fun=approx_func, args=approx_args, x0=initial_param, method=approx_method)
+    optimal_param_vect = solution.x  # location of maximum
+    optimal_func_val = solution.fun  # value at maximum of function
+    return optimal_param_vect, optimal_func_val
+
+
+def posterior_cost(v_array, y_array, cov_matrix, gaussian_mean):  # values of v are only evaluated at locations of y
+    exp_term = np.sum(np.exp(v_array))
+    y_term = - 1 * np.matmul(v_array, np.transpose(y_array))
+    determinant_cov = np.linalg.det(cov_matrix)
+    ln_term = 0.5 * np.log(determinant_cov)
+    data_diff = v_array - gaussian_mean
+    euclidean_term = 0.5 * fn.matmulmul(data_diff, np.linalg.inv(cov_matrix), np.transpose(data_diff))
+    p_cost = exp_term + y_term + ln_term + euclidean_term
+    return p_cost
+
+
+def posterior_cost_opt(param, *args):  # adapt original cost function for optimization
+    v_array = param
+    y_array = args[0]
+    cov_matrix = args[1]
+    gaussian_mean = args[2]
+    p_cost_opt = posterior_cost(v_array, y_array, cov_matrix, gaussian_mean)
+    return p_cost_opt
 
 
 """Collate Data Points from PP_Data"""
@@ -299,7 +332,7 @@ xv_trans_data = xv_trans_data[:-1, :-1]  # Removing the last bin edge and zero p
 yv_trans_data = yv_trans_data[:-1, :-1]  # Contains a square matrix
 xv_trans_row = fn.row_create(xv_trans_data)  # Creates a row from the square matrix
 yv_trans_row = fn.row_create(yv_trans_data)
-histo = fn.row_create(histo)
+histo_k_array = fn.row_create(histo)  # this is the k array
 # xv_transform_row = xv_transform_row[histo != 0]  # Remove data point at histogram equal 0
 # yv_transform_row = yv_transform_row[histo != 0]
 # histo = histo[histo != 0]  # This is after putting them into rows
@@ -316,54 +349,28 @@ yv_trans_row = yv_trans_row + 0.5 * ((y_edges[-1] - y_edges[0]) / bins_number)
 xy_data_coord = np.vstack((xv_trans_row, yv_trans_row))  # location of all the data points
 
 """Generate auto-covariance matrix with noise - using arbitrary hyper-parameters first"""
-sigma_arb = 7
+sigma_arb = 3
 length_arb = 5
 noise_arb = 2
-v = 3/2
-# Remember arbitrary hyper-parameters were chosen
+matern_v = 3/2
+c_dd = matern_2d(matern_v, sigma_arb, length_arb, xy_data_coord, xy_data_coord)
+c_dd_noise = c_dd + (noise_arb ** 2) * np.eye(c_dd.shape[0])  # Input to the posterior_numerator function
 
-c_dd = matern_2d(v, sigma_arb, length_arb, xy_data_coord, xy_data_coord)
-c_dd_noise = c_dd + (noise_arb ** 2) * np.eye(c_dd.shape[0])
-# This shall be the auto-covariance matrix for the optimization
+"""Generate conditions and values for optimization of v, given k"""
+gp_mean_v = np.average(log_special(histo_k_array))  # assuming log(0) = 0, this is a simplified mean calculation
+arguments = (histo_k_array, c_dd_noise, gp_mean_v)  # form of a tuple
+initial_v = np.ones(histo_k_array.shape)  # histo is one long array
 
-# *** The denominator of the posterior is only evaluated at the optimal vhap which is an array
-# and are thus independent of the values in array v. We need to find the optimal value of v
+"""Tabulate optimal array of v, which is vhap"""
+solution = scopt.minimize(fun=posterior_cost_opt, args=arguments, x0=initial_v, method='Nelder-Mead')
+v_hap = solution.x  # generate optimal location of array v which generates the greatest posterior
 
-"""Prior mean is arbitrary for now, but can be changed into a parameter afterwards"""
-"""Prior mean is now taken to be the average of the sum of natural log(histo) across the entire grid"""
-gp_mean_v = np.average(log_special(histo))  # Need to take log(0) = 0
-# Simplified mean tabulation,otherwise the mean will have to be a parameter to be optimised
+landa_hap = np.exp(v_hap)
+index_array = 
 
-
-"""Find vhap, which generates the maximum of the numerator of the posterior"""
-# Initialise array containing v, which also defines dimensions and value of initial parameters before optimization
-v = np.zeros(xy_data_coord.shape[1])  # Taking the number of binned data points
-# The above refers to the initial parameters for optimisation
-
-arguments = (histo, gp_mean_v, c_dd_noise)
-
-"""Define arguments and initial parameters - args, initial_param, boundary, function to be optimised"""
-
-
-# Need to create a likelihood function to be minimised, which generates a set of v that is the maximum
-
-# Note that v is an array of parameters to be optimised,
-# later together with the kernel hyper-parameters
-
-
-fig_lgcp = plt.figure()
-
-data_plot = fig_lgcp.add_subplot(111, projection='3d')
-data_plot.scatter(xv_trans_row, yv_trans_row, histo, marker='.', color='darkblue')
-
+plt.scatter(histo_k_array)
+plt.plot(landa_hap)
 plt.show()
-
-"""
-# Select Optimization method for hyper-parameters and other conditions
-opt_method = 'nelder-mead'
-matern_v = 3/2  # Define matern_v
-xyz_data = (xy_data_coord, histo, matern_v)
-boundary_self = [(0, 30), (0, 3), (0, 3), (0, 10)]  # Can even use this into Nelder-Mead
 
 # Optimization using self-made function
 param_optimal = fn.optimise_param(opt_func=log_model_evidence, opt_arg=xyz_data, opt_method=opt_method,
