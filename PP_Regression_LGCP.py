@@ -62,7 +62,8 @@ def poisson_discrete(k, landa):  # Takes in two parameters intensity landa and o
 
 def poisson_cont(k, landa):  # to allow for non-integer k values
     numerator_p = np.power(landa, k) * np.exp(-1 * landa)
-    denominator_p = scispec.gamma(k)  # Generalised factorial function for non-integer k values
+    denominator_p = scispec.gamma(k + 1)  # Generalised factorial function for non-integer k values
+    # if argument into gamma function is 0, the output is a zero as well, but 0! = 1
     p = numerator_p / denominator_p
     return p
 
@@ -75,12 +76,12 @@ def poisson_product(k_array, landa_array):
     if landa_array.size == 1:
         for i in range(len(k_array)):
             prob_array[i] = poisson_cont(k_array[i], landa_array)
+    else:
+        if len(k_array) == len(landa_array):
+            for i in range(len(prob_array)):
+                prob_array[i] = poisson_cont(k_array[i], landa_array[i])
         else:
-            if len(k_array) == len(landa_array):
-                for i in range(len(prob_array)):
-                    prob_array[i] = poisson_cont(k_array[i], landa_array[i])
-            else:
-                print('Length Mismatch')
+            print('Length Mismatch')
     p_likelihood = np.prod(prob_array)  # Taking combined product of distributions
     # Note output is a scalar (singular value)
     return p_likelihood  # Returns the non logarithmic version.
@@ -281,13 +282,22 @@ def laplace_approx(approx_func, approx_args, initial_param, approx_method):  # N
     # Measure uncertainty from actual value. As M increases, the approximation of the function by
     # a gaussian function gets better. Note that an unscaled gaussian function is used.
     """Tabulate the global maximum of the function - within certain boundaries - using latin hypercube"""
-    solution = scopt.minimize(fun=approx_func, args=approx_args, x0=initial_param, method=approx_method)
-    optimal_param_vect = solution.x  # location of maximum
-    optimal_func_val = solution.fun  # value at maximum of function
-    return optimal_param_vect, optimal_func_val
+    solution_laplace = scopt.minimize(fun=approx_func, args=approx_args, x0=initial_param, method=approx_method)
+    optimal_param_vect = solution_laplace.x  # location of maximum
+    optimal_func_val = solution_laplace.fun  # value at maximum of function
+
+    """
+    Integral value can be approximated as product of 
+    1. function valuation at maximum value
+    2. Squareroot of 2pi / c, where c = the value of the hessian of the log of the function at the optimal location
+    
+    - Optimal location and maximum value of cost function are now tabulated
+    
+    """
 
 
-def posterior_cost(v_array, y_array, cov_matrix, gaussian_mean):  # values of v are only evaluated at locations of y
+# Shortcut optimization cost function to tabulate optimal v array
+def posterior_num_cost(v_array, y_array, cov_matrix, gaussian_mean):  # values of v are only evaluated at locations of y
     exp_term = np.sum(np.exp(v_array))
     y_term = - 1 * np.matmul(v_array, np.transpose(y_array))
     determinant_cov = np.linalg.det(cov_matrix)
@@ -298,13 +308,13 @@ def posterior_cost(v_array, y_array, cov_matrix, gaussian_mean):  # values of v 
     return p_cost
 
 
-def posterior_cost_opt(param, *args):  # adapt original cost function for optimization
+def posterior_num_cost_opt(param, *args):  # adapt original cost function for optimization
     v_array = param
     y_array = args[0]
     cov_matrix = args[1]
     gaussian_mean = args[2]
-    p_cost_opt = posterior_cost(v_array, y_array, cov_matrix, gaussian_mean)
-    return p_cost_opt
+    p_cost_opt_inverted = posterior_num_cost(v_array, y_array, cov_matrix, gaussian_mean)
+    return p_cost_opt_inverted
 
 
 """Collate Data Points from PP_Data"""
@@ -325,7 +335,7 @@ x_transform = np.ravel(df_transform[0])
 y_transform = np.ravel(df_transform[1])
 
 """Bin point process data"""
-bins_number = 10
+bins_number = 20
 histo, x_edges, y_edges = np.histogram2d(x_transform, y_transform, bins=bins_number)
 xv_trans_data, yv_trans_data = np.meshgrid(x_edges, y_edges)
 xv_trans_data = xv_trans_data[:-1, :-1]  # Removing the last bin edge and zero points to make dimensions consistent
@@ -362,31 +372,31 @@ arguments = (histo_k_array, c_dd_noise, gp_mean_v)  # form of a tuple
 initial_v = np.ones(histo_k_array.shape)  # histo is one long array
 
 """Tabulate optimal array of v, which is vhap"""
-solution = scopt.minimize(fun=posterior_cost_opt, args=arguments, x0=initial_v, method='Nelder-Mead')
+solution = scopt.minimize(fun=posterior_num_cost_opt, args=arguments, x0=initial_v, method='Nelder-Mead')
 v_hap = solution.x  # generate optimal location of array v which generates the greatest posterior
 
+# Poisson Product between k and v
+g = poisson_product(histo_k_array, np.exp(v_hap))
+print(g)
+
+"""Obtain posterior distribution at v_hap, then calculate the hessian of those values"""
+post_numerator = posterior_num(v_hap, histo_k_array, gp_mean_v, c_dd_noise)  # thus value is tabulated at vhap
+print(post_numerator)
+
+
+"""Posterior distribution of log-intensities is approximated by a Multi-variate Normal distribution"""
+
+index_array = np.zeros(histo_k_array.size)
+for index in range(histo_k_array.size):
+    index_array[index] = index
+
 landa_hap = np.exp(v_hap)
-index_array = 
 
-plt.scatter(histo_k_array)
-plt.plot(landa_hap)
+print(poisson_product(histo_k_array, landa_hap))
+
+plt.scatter(index_array, histo_k_array, marker='x', color='black')
+plt.plot(index_array, landa_hap, color='darkblue', linewidth=1)
 plt.show()
-
-# Optimization using self-made function
-param_optimal = fn.optimise_param(opt_func=log_model_evidence, opt_arg=xyz_data, opt_method=opt_method,
-                                  boundary=boundary_self)
-"""
-
-"""
-# Generate Gaussian Random field - but just one example
-r = np.random.randn(C_auto.shape[0], 1)  # Creates a column of random values with mean 0 and variance 1
-S, V, D = np.linalg.svd(C_auto, full_matrices=True)  # Singular Value Decomposition
-diagonal_V = np.diag(V)  # Constructing a diagonal matrix from the decomposed matrix
-z = fn.matmulmul(S, np.sqrt(diagonal_V), r)  # This is a column containing the gaussian random surface values
-zv = np.reshape(z, (x_edges[:-1].size, y_edges[:-1].size))  # Reshape to 2-D matrix form - bin in the same way as data
-# Generated a Gaussian Random Field - Note that this gaussian random surface keeps changing
-
-"""
 
 
 
