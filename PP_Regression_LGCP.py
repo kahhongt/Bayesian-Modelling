@@ -335,7 +335,7 @@ x_transform = np.ravel(df_transform[0])
 y_transform = np.ravel(df_transform[1])
 
 """Bin point process data"""
-bins_number = 20
+bins_number = 10
 histo, x_edges, y_edges = np.histogram2d(x_transform, y_transform, bins=bins_number)
 xv_trans_data, yv_trans_data = np.meshgrid(x_edges, y_edges)
 xv_trans_data = xv_trans_data[:-1, :-1]  # Removing the last bin edge and zero points to make dimensions consistent
@@ -363,8 +363,12 @@ sigma_arb = 3
 length_arb = 5
 noise_arb = 2
 matern_v = 3/2
-c_dd = matern_2d(matern_v, sigma_arb, length_arb, xy_data_coord, xy_data_coord)
-c_dd_noise = c_dd + (noise_arb ** 2) * np.eye(c_dd.shape[0])  # Input to the posterior_numerator function
+# c_dd = matern_2d(matern_v, sigma_arb, length_arb, xy_data_coord, xy_data_coord)
+# c_dd_noise = c_dd + (noise_arb ** 2) * np.eye(c_dd.shape[0])  # Input to the posterior_numerator function
+
+"""Testing out a squared exponential kernel"""
+c_dd = squared_exp_2d(sigma_arb, length_arb, xy_data_coord, xy_data_coord)
+c_dd_noise = c_dd + (noise_arb ** 2) * np.eye(c_dd.shape[0])
 
 """Generate conditions and values for optimization of v, given k"""
 gp_mean_v = np.average(log_special(histo_k_array))  # assuming log(0) = 0, this is a simplified mean calculation
@@ -395,7 +399,7 @@ landa_hap = np.exp(v_hap)
 print(poisson_product(histo_k_array, landa_hap))
 
 plt.scatter(index_array, histo_k_array, marker='x', color='black')
-plt.plot(index_array, landa_hap, color='darkblue', linewidth=1)
+plt.plot(index_array, v_hap, color='darkblue', linewidth=1)
 plt.show()
 
 
