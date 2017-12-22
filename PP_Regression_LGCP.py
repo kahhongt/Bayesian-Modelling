@@ -382,7 +382,7 @@ x_transform = np.ravel(df_transform[0])
 y_transform = np.ravel(df_transform[1])
 
 """Bin point process data"""
-bins_number = 5
+bins_number = 4
 histo, x_edges, y_edges = np.histogram2d(x_transform, y_transform, bins=bins_number)
 xv_trans_data, yv_trans_data = np.meshgrid(x_edges, y_edges)
 xv_trans_data = xv_trans_data[:-1, :-1]  # Removing the last bin edge and zero points to make dimensions consistent
@@ -416,7 +416,16 @@ initial_v_hyperparam = np.concatenate((initial_hyperparam, initial_v), axis=0)  
 arguments_all = (histo_k_array, xy_data_coord, gp_mean_v)  # form of a tuple with 3 elements
 solution = scipy.optimize.minimize(fun=posterior_cost_hyp_opt, x0=initial_v_hyperparam, args=arguments_all,
                                    method='Nelder-Mead')
-print(solution.x)
+
+opt_param = solution.x
+sigma_optimal = opt_param[0]
+length_optimal = opt_param[1]
+noise_optimal = opt_param[2]
+opt_v_array = opt_param[3:]
+
+"""What is the Hessian of the log posterior"""
+
+"""Implement Predictive Bayesian Inference using the found hyper-parameters and latent values"""
 # The Posterior distribution for log-intensity acts as a prior to the posterior of the occurrence of events
 
 

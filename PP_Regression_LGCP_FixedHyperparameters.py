@@ -378,6 +378,18 @@ initial_v = np.ones(histo_k_array.shape)  # histo is one long array
 """Tabulate optimal array of v, which is vhap"""
 solution = scopt.minimize(fun=posterior_num_cost_opt, args=arguments, x0=initial_v, method='Nelder-Mead')
 v_hap = solution.x  # generate optimal location of array v which generates the greatest posterior
+landa_hap = np.exp(v_hap)
+
+x_data_mesh = np.reshape(xy_data_coord[0, :], (bins_number, bins_number))
+y_data_mesh = np.reshape(xy_data_coord[1, :], (bins_number, bins_number))
+k_data_mesh = np.reshape(histo_k_array, (bins_number, bins_number))
+landa_mesh = np.reshape(landa_hap, (bins_number, bins_number))
+
+
+print(landa_mesh)
+print(landa_mesh.shape)
+
+"""Create a mesh containing latent intensity values - then tabulate the Hessian"""
 
 
 """Posterior distribution of log-intensities is approximated by a Multi-variate Normal distribution"""
@@ -385,12 +397,6 @@ v_hap = solution.x  # generate optimal location of array v which generates the g
 index_array = np.zeros(histo_k_array.size)
 for index in range(histo_k_array.size):
     index_array[index] = index
-
-landa_hap = np.exp(v_hap)
-
-print(landa_hap.shape)
-print(histo_k_array.shape)
-print(xy_data_coord.shape)
 
 fig = plt.figure()
 
@@ -400,13 +406,9 @@ d_latent.scatter(xy_data_coord[0, :], xy_data_coord[1, :], histo_k_array, color=
 d_latent.scatter(xy_data_coord[0, :], xy_data_coord[1, :], landa_hap, color='red', marker='.')
 
 """Surface Plots"""
-x_data_mesh = np.reshape(xy_data_coord[0, :], (bins_number, bins_number))
-y_data_mesh = np.reshape(xy_data_coord[1, :], (bins_number, bins_number))
-k_data_mesh = np.reshape(histo_k_array, (bins_number, bins_number))
-landa_data_mesh = np.reshape(landa_hap, (bins_number, bins_number))
 d_latent_surface = fig.add_subplot(122, projection='3d')
 d_latent_surface.plot_surface(x_data_mesh, y_data_mesh, k_data_mesh, cmap='RdBu')
-d_latent_surface.plot_surface(x_data_mesh, y_data_mesh, landa_data_mesh, cmap='PRGn')
+d_latent_surface.plot_surface(x_data_mesh, y_data_mesh, landa_mesh, cmap='PRGn')
 
 plt.show()
 
