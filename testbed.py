@@ -49,8 +49,12 @@ def poisson_product(k_array, landa_array):
 k_a = np.array([1, 2, 3, 4, 5, 7, 3, 2, 0, 9])
 landa_a = np.array([2, 2, 2, 2, 2, 2, 2, 2, 9, 10])
 
-print(poisson_cont(0, 2))
+g_concat = np.concatenate((k_a, landa_a), axis=0)
+abb = g_concat[3:]
 
+
+print(g_concat)
+print(abb)
 
 
 

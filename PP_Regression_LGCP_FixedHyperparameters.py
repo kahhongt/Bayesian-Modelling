@@ -7,6 +7,7 @@ import functions as fn
 import scipy
 import scipy.special as scispec
 import scipy.optimize as scopt
+
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -308,12 +309,6 @@ def posterior_num_cost(v_array, y_array, cov_matrix, gaussian_mean):  # values o
 
 
 def posterior_num_cost_opt(param, *args):  # adapt original cost function for optimization
-    """
-    Assuming an arbitrary covariance matrix at the start
-    :param param: v_array
-    :param args: data set y_array, arbitrary covariance matrix, and gaussian mean
-    :return: generates the value of the numerator of the posterior
-    """
     v_array = param
     y_array = args[0]
     cov_matrix = args[1]
@@ -322,50 +317,8 @@ def posterior_num_cost_opt(param, *args):  # adapt original cost function for op
     return p_cost_opt_inverted
 
 
-"""Optimise hyper-parameters of the covariance as well"""
-
-
-def posterior_cost_hyp(v_array, hyperparameters, k_array, xy_coordinates, gaussian_mean):
-    """Generate covariance matrix inside function as we need to optimise hyper-parameters"""
-    v = 3/2
-    sigma = hyperparameters[0]
-    length = hyperparameters[1]
-    noise = hyperparameters[2]
-    c_auto = matern_2d(v, sigma, length, xy_coordinates, xy_coordinates)
-    c_auto_noise = c_auto + (noise ** 2) * np.eye(c_auto.shape[0])
-
-    """Compute numerator of posterior"""
-    exp_term = np.sum(np.exp(v_array))
-    y_term = - 1 * np.matmul(v_array, np.transpose(k_array))
-    determinant_cov = np.linalg.det(c_auto_noise)
-    ln_term = 0.5 * np.log(determinant_cov)
-    data_diff = v_array - gaussian_mean
-    euclidean_term = 0.5 * fn.matmulmul(data_diff, np.linalg.inv(c_auto_noise), np.transpose(data_diff))
-    p_cost = exp_term + y_term + ln_term + euclidean_term
-    return p_cost
-
-
-# Create suitable form for optimisation of v_array and hyper-parameters
-def posterior_cost_hyp_opt(param, *args):  # param is an array, args is a tuple
-    """
-    :param param: optimal sigma, length scale, noise and v_array
-    :param args: k_array, coordinates and gaussian mean
-    :return: the numerator of the posterior, while taking the negative of it for minimal optimisation
-    """
-    sigma_optimal = param[0]
-    length_optimal = param[1]
-    noise_optimal = param[2]
-    v_array = param[3:]  # The rest is v_array
-    hyperparameters_optimal = np.array([sigma_optimal, length_optimal, noise_optimal])
-    k_array = args[0]
-    xy_coord = args[1]
-    gp_mean = args[2]
-    p_value = posterior_cost_hyp(v_array, hyperparameters_optimal, k_array, xy_coord, gp_mean)
-    return -p_value  # We thus want to minimise the negative of the function value
-
-
 """Collate Data Points from PP_Data"""
-# time_start = time.clock()  # Start computation time measurement
+time_start = time.clock()  # Start computation time measurement
 
 """Extract Data from csv"""  # Arbitrary Point Process Data
 A = np.genfromtxt('PP_Data_2D.csv', delimiter=',')  # Extract from csv using numpy
@@ -382,7 +335,7 @@ x_transform = np.ravel(df_transform[0])
 y_transform = np.ravel(df_transform[1])
 
 """Bin point process data"""
-bins_number = 5
+bins_number = 10
 histo, x_edges, y_edges = np.histogram2d(x_transform, y_transform, bins=bins_number)
 xv_trans_data, yv_trans_data = np.meshgrid(x_edges, y_edges)
 xv_trans_data = xv_trans_data[:-1, :-1]  # Removing the last bin edge and zero points to make dimensions consistent
@@ -405,35 +358,57 @@ yv_trans_row = yv_trans_row + 0.5 * ((y_edges[-1] - y_edges[0]) / bins_number)
 # Stack into 2 rows of many columns
 xy_data_coord = np.vstack((xv_trans_row, yv_trans_row))  # location of all the data points
 
+"""Generate auto-covariance matrix with noise - using arbitrary hyper-parameters first"""
+sigma_arb = 3
+length_arb = 5
+noise_arb = 2
+matern_v = 3/2
+c_dd = matern_2d(matern_v, sigma_arb, length_arb, xy_data_coord, xy_data_coord)
+c_dd_noise = c_dd + (noise_arb ** 2) * np.eye(c_dd.shape[0])  # Input to the posterior_numerator function
+
+"""Testing out a squared exponential kernel"""
+# c_dd = squared_exp_2d(sigma_arb, length_arb, xy_data_coord, xy_data_coord)
+# c_dd_noise = c_dd + (noise_arb ** 2) * np.eye(c_dd.shape[0])
 
 """Generate conditions and values for optimization of v, given k"""
 gp_mean_v = np.average(log_special(histo_k_array))  # assuming log(0) = 0, this is a simplified mean calculation
-initial_v = np.ones(histo_k_array.shape)  # initial parameter for log of intensity
-initial_hyperparam = np.array([3, 3, 3])  # sigma, length and noise (start of iteration)
+arguments = (histo_k_array, c_dd_noise, gp_mean_v)  # form of a tuple
+initial_v = np.ones(histo_k_array.shape)  # histo is one long array
 
-"""Tabulate optimal array of v, and kernel hyperparameters"""
-initial_v_hyperparam = np.concatenate((initial_hyperparam, initial_v), axis=0)  # concatenate hyperparameters, then v
-arguments_all = (histo_k_array, xy_data_coord, gp_mean_v)  # form of a tuple with 3 elements
-solution = scipy.optimize.minimize(fun=posterior_cost_hyp_opt, x0=initial_v_hyperparam, args=arguments_all,
-                                   method='Nelder-Mead')
-print(solution.x)
-# The Posterior distribution for log-intensity acts as a prior to the posterior of the occurrence of events
+"""Tabulate optimal array of v, which is vhap"""
+solution = scopt.minimize(fun=posterior_num_cost_opt, args=arguments, x0=initial_v, method='Nelder-Mead')
+v_hap = solution.x  # generate optimal location of array v which generates the greatest posterior
 
 
+"""Posterior distribution of log-intensities is approximated by a Multi-variate Normal distribution"""
 
-
-"""
 index_array = np.zeros(histo_k_array.size)
 for index in range(histo_k_array.size):
     index_array[index] = index
 
 landa_hap = np.exp(v_hap)
 
-print(poisson_product(histo_k_array, landa_hap))
+print(landa_hap.shape)
+print(histo_k_array.shape)
+print(xy_data_coord.shape)
 
-plt.scatter(index_array, histo_k_array, marker='x', color='black')
-plt.plot(index_array, v_hap, color='darkblue', linewidth=1)
+fig = plt.figure()
+
+"""Scatter Plots"""
+d_latent = fig.add_subplot(121, projection='3d')
+d_latent.scatter(xy_data_coord[0, :], xy_data_coord[1, :], histo_k_array, color='darkblue', marker='.')
+d_latent.scatter(xy_data_coord[0, :], xy_data_coord[1, :], landa_hap, color='red', marker='.')
+
+"""Surface Plots"""
+x_data_mesh = np.reshape(xy_data_coord[0, :], (bins_number, bins_number))
+y_data_mesh = np.reshape(xy_data_coord[1, :], (bins_number, bins_number))
+k_data_mesh = np.reshape(histo_k_array, (bins_number, bins_number))
+landa_data_mesh = np.reshape(landa_hap, (bins_number, bins_number))
+d_latent_surface = fig.add_subplot(122, projection='3d')
+d_latent_surface.plot_surface(x_data_mesh, y_data_mesh, k_data_mesh, cmap='RdBu')
+d_latent_surface.plot_surface(x_data_mesh, y_data_mesh, landa_data_mesh, cmap='PRGn')
+
 plt.show()
 
-"""
+
 
