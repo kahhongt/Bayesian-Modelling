@@ -305,7 +305,7 @@ def posterior_num_cost(v_array, y_array, cov_matrix, gaussian_mean):  # values o
     data_diff = v_array - gaussian_mean
     euclidean_term = 0.5 * fn.matmulmul(data_diff, np.linalg.inv(cov_matrix), np.transpose(data_diff))
     p_cost = exp_term + y_term + ln_term + euclidean_term
-    return p_cost
+    return p_cost  # I think this is a mistake
 
 
 def posterior_num_cost_opt(param, *args):  # adapt original cost function for optimization
@@ -351,7 +351,7 @@ histo_k_array = fn.row_create(histo)  # this is the k array
 Data point coordinates are now at bottom-left hand corner, coordinates of data points have
 to be centralised to the centre of each quadrat
 """
-# Centralizing coordinates for each quadrat
+# Centralizing coordinates for each quadrat - taking the last minus first value
 xv_trans_row = xv_trans_row + 0.5 * ((x_edges[-1] - x_edges[0]) / bins_number)
 yv_trans_row = yv_trans_row + 0.5 * ((y_edges[-1] - y_edges[0]) / bins_number)
 
@@ -386,10 +386,9 @@ k_data_mesh = np.reshape(histo_k_array, (bins_number, bins_number))
 landa_mesh = np.reshape(landa_hap, (bins_number, bins_number))
 
 
+"""Have to obtain the distribution at each data location"""
 print(landa_mesh)
 print(landa_mesh.shape)
-
-"""Create a mesh containing latent intensity values - then tabulate the Hessian"""
 
 
 """Posterior distribution of log-intensities is approximated by a Multi-variate Normal distribution"""

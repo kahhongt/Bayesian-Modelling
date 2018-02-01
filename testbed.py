@@ -1,8 +1,17 @@
-import numpy as np
-import scipy.optimize as scopt
+import pandas as pd
+import math
 import matplotlib
+import numpy as np
+import time
+import functions as fn
+import scipy
 import scipy.special as scispec
+import scipy.optimize as scopt
+
 matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def laplace_approx(approx_func, approx_args, initial_param, approx_method):
@@ -46,16 +55,63 @@ def poisson_product(k_array, landa_array):
     return p_likelihood  # Returns the non logarithmic version.
 
 
-k_a = np.array([1, 2, 3, 4, 5, 7, 3, 2, 0, 9])
-landa_a = np.array([2, 2, 2, 2, 2, 2, 2, 2, 9, 10])
+# Testing for kernel function matrix
+def squared_exp_2d(sigma_exp, length_exp, x1, x2):  # Only for 2-D
+    # Define horizontal and vertical dimensions of covariance matrix c
+    if np.array([x1.shape]).size == 1 and np.array([x2.shape]).size != 1 and x1.size == x2.shape[0]:
+        rows = 1
+        columns = x2.shape[1]
+    elif np.array([x2.shape]).size == 1 and np.array([x1.shape]).size != 1 and x2.size == x1.shape[0]:
+        rows = x1.shape[1]
+        columns = 1
+    elif np.array([x1.shape]).size == 1 and np.array([x2.shape]).size == 1 and x1.size == x2.size:
+        rows = 1
+        columns = 1
+    else:
+        rows = x1.shape[1]
+        columns = x2.shape[1]
 
-g_concat = np.concatenate((k_a, landa_a), axis=0)
-abb = g_concat[3:]
+    c = np.zeros((rows, columns))
+
+    for i in range(c.shape[0]):
+        for j in range(c.shape[1]):
+            if np.array([x1.shape]).size == 1 and np.array([x2.shape]).size != 1:
+                diff = x1 - x2[:, j]
+            elif np.array([x1.shape]).size != 1 and np.array([x2.shape]).size == 1:
+                diff = x1[:, i] - x2
+            elif np.array([x1.shape]).size == 1 and np.array([x2.shape]).size == 1:
+                diff = x1 - x2
+            else:
+                diff = x1[:, i] - x2[:, j]
+
+            euclidean = np.sqrt(np.matmul(diff, np.transpose(diff)))
+            exp_power = np.exp(-1 * (euclidean ** 2) * (length_exp ** -2))
+            c[i, j] = (sigma_exp ** 2) * exp_power
+
+    return c  # Note that this creates the covariance matrix directly
 
 
-print(g_concat)
-print(abb)
+# Try obtaining a covariance matrix - which can be used to evaluate the posterior
+# First obtain a data set
 
+"""Extract Data from csv"""  # Arbitrary Point Process Data
+A = np.genfromtxt('PP_Data_2D.csv', delimiter=',')  # Extract from csv using numpy
+df = pd.read_csv('PP_Data_2D.csv')  # Generates a DataFrame from csv - coal data
+x = np.ravel(df.values[0])
+y = np.ravel(df.values[1])
+
+
+fig = plt.figure()
+fig.canvas.set_window_title('Incidences and Quads')
+spacing = 1
+minorLocator = ticker.MultipleLocator(spacing)
+incidence = fig.add_subplot(111)
+incidence.scatter(x, y, color='black', marker='.', s=1)
+incidence.yaxis.set_minor_locator(minorLocator)
+incidence.xaxis.set_minor_locator(minorLocator)
+incidence.grid(which='minor')
+
+plt.show()
 
 
 
