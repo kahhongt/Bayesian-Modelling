@@ -81,7 +81,7 @@ def poisson_product(k_array, landa_array):
                 prob_array[i] = poisson_cont(k_array[i], landa_array[i])
         else:
             print('Length Mismatch')
-    p_likelihood = np.prod(prob_array)  # Taking combined product of distributions
+    p_likelihood = np.prod(prob_array)  # Taking combined product of distributions - leading to small values
     # Note output is a scalar (singular value)
     return p_likelihood  # Returns the non logarithmic version.
 

@@ -94,7 +94,7 @@ def log_special(array):
     for i in range(array.size):
         if array[i] == 0:
             log_array[i] = 0
-        else:
+        else:  # meaning that if the array element is not zero, then we can apply the natural log
             log_array[i] = np.log(array[i])
     return log_array
 
@@ -115,6 +115,7 @@ def mean_func_scalar(mean, c):  # Assume that the prior mean is a constant to be
     return mean_c
 
 
+# "2-dimensional squared exponential function that generates the covariance matrix"
 def squared_exp_2d(sigma_exp, length_exp, x1, x2):  # Only for 2-D
     # Define horizontal and vertical dimensions of covariance matrix c
     if np.array([x1.shape]).size == 1 and np.array([x2.shape]).size != 1 and x1.size == x2.shape[0]:
@@ -150,6 +151,7 @@ def squared_exp_2d(sigma_exp, length_exp, x1, x2):  # Only for 2-D
     return c  # Note that this creates the covariance matrix directly
 
 
+# "2-dimensional matern kernel function that generates the covariance matrix directly"
 def matern_2d(v_value, sigma_matern, length_matern, x1, x2):  # there are only two variables in the matern function
     # Define horizontal and vertical dimensions of covariance matrix c
     if np.array([x1.shape]).size == 1 and np.array([x2.shape]).size != 1 and x1.size == x2.shape[0]:
@@ -201,6 +203,10 @@ def matern_2d(v_value, sigma_matern, length_matern, x1, x2):  # there are only t
                 c[i, j] = (sigma_matern ** 2) * coefficient_term * exp_term
     return c
 # Both kernel functions take in numpy arrays of one row (create a single column first)
+
+
+"""Note the below is for standard gaussian process regression - so we will not be using them for Laplace"""
+"""Eventually we will have to compare between the LGCP implementation and the standard GP regression"""
 
 
 def mu_post(p_mean, xy_next, c_auto, c_cross, mismatch):  # Posterior mean
