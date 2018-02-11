@@ -38,17 +38,6 @@ Proper Steps to follow:
 4. We are here predicting the posterior for v instead of landa
 5. v follows a gaussian process, and there is only one optimal value set of values
 6. m refers to the number of bins/quadrats
-
-Tabulating Posterior
-a. Numerator:
-    - Product of poisson distributions across the data set and gaussian process prior on v
-    - This is tabulated at an arbitrary set of hyper-parameters - to be optimised later
-b. Denominator - intractable integral
-    - Laplace's Approximation
-    - Bayesian Quadrature
-    - MCMC Sampling
-8. Tabulate optimal covariance from the Hessian
-    - The matrix inverse of the Hessian is the covariance at that point - there is no explicit function
 """
 
 
@@ -348,43 +337,39 @@ def posterior_num_cost_opt(param, *args):  # adapt original cost function for op
     return p_cost_opt_inverted
 
 
-"""Collate Data Points from PP_Data"""
-time_start = time.clock()  # Start computation time measurement
+# Aedes Occurrences in Brazil
+aedes_df = pd.read_csv('Aedes_PP_Data.csv')  # generates dataframe from csv - zika data
 
-"""Extract Data from csv"""  # Arbitrary Point Process Data
-A = np.genfromtxt('PP_Data_2D.csv', delimiter=',')  # Extract from csv using numpy
-df = pd.read_csv('PP_Data_2D.csv')  # Generates a DataFrame from csv - coal data
-x = np.ravel(df.values[0])
-y = np.ravel(df.values[1])
+# Setting boolean variables required for the data
+brazil = aedes_df['COUNTRY'] == "Brazil"
+taiwan = aedes_df['COUNTRY'] == "Taiwan"
+aegyp = aedes_df['VECTOR'] == "Aedes aegypti"
+albop = aedes_df['VECTOR'] == "Aedes albopictus"
+year_2014 = aedes_df['YEAR'] == "2014"
+year_2013 = aedes_df['YEAR'] == "2013"
+year_2012 = aedes_df['YEAR'] == "2012"
 
-"""Specify rotation matrix for data set"""
-theta = 0 * np.pi  # Specify degree of rotation in a clockwise direction in radians
-mat_transform = np.matrix([[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]])
-df_matrix = np.vstack((x, y))
-df_transform = mat_transform * df_matrix
-x_transform = np.ravel(df_transform[0])
-y_transform = np.ravel(df_transform[1])
+# Extract data for Brazil and make sure to convert data type to float64
+aedes_brazil = aedes_df[brazil]  # Extracting Brazil Data
+aedes_brazil_2014 = aedes_df[brazil & year_2014]
+aedes_brazil_2013 = aedes_df[brazil & year_2013]
+aedes_brazil_2012 = aedes_df[brazil & year_2012]
+x_2014 = aedes_brazil_2014.values[:, 5].astype('float64')
+y_2014 = aedes_brazil_2014.values[:, 4].astype('float64')
+x_2013 = aedes_brazil_2013.values[:, 5].astype('float64')
+y_2013 = aedes_brazil_2013.values[:, 4].astype('float64')
 
-print(type(x_transform[1]))
 
-"""Bin point process data"""
-bins_number = 10
-histo, x_edges, y_edges = np.histogram2d(x_transform, y_transform, bins=bins_number)
+# First conduct a regression on the 2014 data set
+quads_on_side = 5  # define the number of quads along each dimension
+# histo, x_edges, y_edges = np.histogram2d(theft_x, theft_y, bins=quads_on_side)  # create histogram
+histo, y_edges, x_edges = np.histogram2d(y_2014, x_2014, bins=quads_on_side)
+x_mesh, y_mesh = np.meshgrid(x_edges, y_edges)  # creating mesh-grid for use
+x_mesh = x_mesh[:-1, :-1]  # Removing extra rows and columns due to edges
+y_mesh = y_mesh[:-1, :-1]
+x_quad = fn.row_create(x_mesh)  # Creating the rows from the mesh
+y_quad = fn.row_create(y_mesh)
 
-xv_trans_data, yv_trans_data = np.meshgrid(x_edges, y_edges)
-xv_trans_data = xv_trans_data[:-1, :-1]  # Removing the last bin edge and zero points to make dimensions consistent
-yv_trans_data = yv_trans_data[:-1, :-1]  # Contains a square matrix
-xv_trans_row = fn.row_create(xv_trans_data)  # Creates a row from the square matrix
-yv_trans_row = fn.row_create(yv_trans_data)
-histo_k_array = fn.row_create(histo)  # this is the k array
-# xv_transform_row = xv_transform_row[histo != 0]  # Remove data point at histogram equal 0
-# yv_transform_row = yv_transform_row[histo != 0]
-# histo = histo[histo != 0]  # This is after putting them into rows
-
-"""
-Data point coordinates are now at bottom-left hand corner, coordinates of data points have
-to be centralised to the centre of each quadrat
-"""
 # Centralizing coordinates for each quadrat - taking the last minus first value
 xv_trans_row = xv_trans_row + 0.5 * ((x_edges[-1] - x_edges[0]) / bins_number)
 yv_trans_row = yv_trans_row + 0.5 * ((y_edges[-1] - y_edges[0]) / bins_number)
