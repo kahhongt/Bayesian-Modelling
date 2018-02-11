@@ -423,6 +423,10 @@ length_optimal = opt_param[1]
 noise_optimal = opt_param[2]
 opt_v_array = opt_param[3:]
 
+print(solution.x)
+print(np.exp(opt_v_array))
+print(histo_k_array)
+
 """What is the Hessian of the log posterior"""
 
 """Implement Predictive Bayesian Inference using the found hyper-parameters and latent values"""
